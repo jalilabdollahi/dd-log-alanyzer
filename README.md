@@ -522,8 +522,8 @@ graph LR
 ### 1. Clone and start
 
 ```bash
-git clone https://github.com/dd-log/dd-loganalyzer
-cd dd-loganalyzer/deploy/docker
+git clone https://github.com/jalilabdollahi/dd-log-alanyzer.git
+cd dd-log-alanyzer/deploy/docker
 cp .env.example .env
 # Edit .env with your Datadog API key, App key, etc.
 docker compose up -d
