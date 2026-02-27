@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dd-log-analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles/index.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login screen -->
+        <div id="login-screen" class="login-screen">
+            <div class="login-card">
+                <div class="login-logo">📊</div>
+                <h1>dd-log-analyzer</h1>
+                <p class="login-sub">Sign in to continue</p>
+                <form id="login-form">
+                    <input type="text" id="login-user" placeholder="Username" autocomplete="username" required>
+                    <input type="password" id="login-pass" placeholder="Password" autocomplete="current-password" required>
+                    <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+                    <div id="login-error" class="login-error"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main app shell -->
+        <div id="app-shell" class="app-shell hidden">
+            <aside class="sidebar">
+                <div class="sidebar-brand">
+                    <span class="brand-icon">📊</span>
+                    <span class="brand-text">dd-logs</span>
+                </div>
+                <nav class="sidebar-nav">
+                    <a href="#dashboard" class="nav-link active" data-page="dashboard">
+                        <span class="nav-icon">🏠</span> Dashboard
+                    </a>
+                    <a href="#anomalies" class="nav-link" data-page="anomalies">
+                        <span class="nav-icon">🔍</span> Anomalies
+                    </a>
+                    <a href="#logs" class="nav-link" data-page="logs">
+                        <span class="nav-icon">📜</span> Log Viewer
+                    </a>
+                    <a href="#settings" class="nav-link" data-page="settings">
+                        <span class="nav-icon">⚙️</span> Settings
+                    </a>
+                </nav>
+                <div class="sidebar-footer">
+                    <button id="logout-btn" class="btn btn-ghost btn-sm">Logout</button>
+                </div>
+            </aside>
+            <main class="main-content">
+                <div id="page-content"></div>
+            </main>
+        </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

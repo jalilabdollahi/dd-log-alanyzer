@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# dd-log-analyzer — Backend (FastAPI)
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+COPY src/ ./src/
+
+RUN pip install --no-cache-dir --prefix=/install ".[web]"
+
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.source="https://github.com/dd-log/dd-loganalyzer"
+LABEL org.opencontainers.image.description="dd-log-analyzer backend — FastAPI REST API"
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy source and config
+COPY src/ ./src/
+COPY config/ ./config/
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+
+# Environment defaults
+ENV PRODUCTION=true
+ENV DB_PATH=/app/data/anomaly_history.db
+ENV CONFIG_PATH=/app/config/default.yaml
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "dd_log_analyzer.webapp.server:app", "--host", "0.0.0.0", "--port", "8000"]

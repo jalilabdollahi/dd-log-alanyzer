@@ -1,0 +1,76 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# dd-log-analyzer — Docker Compose (Local Deployment)
+# ─────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   cp .env.example .env       # fill in your credentials
+#   docker compose up -d       # start all services
+#   docker compose logs -f     # follow logs
+#   docker compose down        # stop all services
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── FastAPI Backend ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.backend
+    image: ghcr.io/dd-log/dd-log-analyzer-backend:latest
+    container_name: dd-logs-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PRODUCTION=true
+      - DB_PATH=/app/data/anomaly_history.db
+      - CONFIG_PATH=/app/config/default.yaml
+    volumes:
+      - app-data:/app/data
+      - ./config:/app/config
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Nginx Frontend ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.frontend
+    image: ghcr.io/dd-log/dd-log-analyzer-frontend:latest
+    container_name: dd-logs-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ── Watcher (continuous monitoring) ─────────────────────────────────────
+  watcher:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.watcher
+    image: ghcr.io/dd-log/dd-log-analyzer-watcher:latest
+    container_name: dd-logs-watcher
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DB_PATH=/app/data/anomaly_history.db
+      - CONFIG_PATH=/app/config/default.yaml
+      - WATCH_INTERVAL=60
+      - WATCH_ALL_SERVICES=true
+      - WATCH_SLACK=false
+      - WATCH_JIRA=false
+    volumes:
+      - app-data:/app/data
+      - ./config:/app/config
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  app-data:
+    driver: local

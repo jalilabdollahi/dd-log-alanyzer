@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dd-log-analyzer.fullname" . }}-backend
+  labels:
+    {{- include "dd-log-analyzer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "dd-log-analyzer.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend

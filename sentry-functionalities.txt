@@ -1,0 +1,191 @@
+================================================================================
+                        SENTRY — FUNCTIONALITIES OVERVIEW
+                            https://sentry.io
+================================================================================
+
+Sentry is an application performance monitoring & error tracking platform
+designed for developers. It provides full-stack observability with real-time
+error detection, performance monitoring, and debugging tools.
+
+================================================================================
+1. ERROR MONITORING
+================================================================================
+   - Automatic capture of all unhandled exceptions
+   - Stack traces with local variables for full context
+   - Breadcrumbs — tracks events leading up to an error (user clicks, API
+     calls, console logs, navigation) for step-by-step debugging
+   - Error grouping — individual errors roll up into larger "issues"
+   - Error frequency monitoring to detect trends
+   - User impact analysis — see how many real users are affected by each error
+   - Auto-assignment — automatically assigns issues to the developer who
+     committed the broken code
+   - Alerts — configurable notifications (Slack, email, PagerDuty, etc.)
+     when an error occurs for the first time, regresses, or escalates
+   - Release Health — real-time visibility into crash-free sessions, version
+     adoption, and failure rate per release
+   - Source maps support for minified/compiled code
+
+================================================================================
+2. DISTRIBUTED TRACING
+================================================================================
+   - End-to-end request tracing across frontend and backend services
+   - Trace View & Trace Navigator — visual waterfall of the entire request
+     lifecycle across all services/projects
+   - Suspect Spans — automatically identifies the slowest operations in a trace
+   - Trace Explorer — filter and search traces by transaction, user,
+     environment, repo, or custom attributes
+   - Slow database query detection — jump directly to the query causing delays
+   - Slow API call identification — pinpoint overloaded endpoints or sluggish
+     third-party services
+   - Span metrics — track latency, throughput, and failure rate for specific
+     operations (e.g. db.query.user_by_id)
+   - Background job debugging — see what triggered jobs, how long they ran,
+     retries, and related service calls
+   - AI agent monitoring — trace prompt flows, model responses, tool calls
+     for OpenAI/Vercel agents
+   - Metric alerts on latency, error rate, or throughput for key spans
+   - Anomaly alerts — detect spikes or regressions without manual thresholds
+
+================================================================================
+3. SESSION REPLAY
+================================================================================
+   - Video-like replays of real user sessions in the browser
+   - Console output, network calls, and DOM mutations captured alongside replay
+   - Mobile session replay — includes device-level data like battery level,
+     device orientation, and connectivity
+   - Privacy by default — sensitive user data is masked/blocked on the device
+     before being sent
+   - Linked to errors & performance — replays are directly associated with
+     corresponding error and performance issues
+   - Hydration Error Diff Tool — pinpoints hydration mismatches in SSR apps
+     (Next.js, etc.) through session replays
+   - Rage & Dead Click Detection — identifies unresponsive UI elements that
+     users repeatedly click on
+   - User Feedback widget — collects direct user feedback attached to sessions
+
+================================================================================
+4. CONTINUOUS & UI PROFILING
+================================================================================
+   - Backend profiling (Node.js, Python) — granular, unlimited-duration
+     function-level profiling to spot CPU spikes, deep recursion, and batch
+     job bottlenecks
+   - Mobile UI profiling (iOS, Android) — captures full UI thread execution
+     to find frame drops, slow renders, and heavy SDK callbacks
+   - Flame charts & flame graphs — visual representation of call stacks
+   - Performance issue detection — surfaces issues like image decoding or
+     JSON parsing blocking the main thread
+   - From alert to line of code — drill down from a performance alert to
+     the exact function causing the slowdown
+
+================================================================================
+5. SEER (AI-POWERED DEBUGGING AGENT) — NEW
+================================================================================
+   - Automatic root cause analysis — AI identifies the root cause of errors
+   - AI-suggested fixes — provides actionable fix suggestions
+   - Works across the entire stack (frontend + backend)
+
+================================================================================
+6. AI CODE REVIEW — NEW
+================================================================================
+   - Pre-merge error prediction — identifies potential errors in pull requests
+     before they reach production
+   - Integrated into GitHub — reviews PRs and flags risky changes
+   - Learns from production error patterns to improve predictions
+
+================================================================================
+7. SIZE ANALYSIS — NEW
+================================================================================
+   - Bundle size tracking for JavaScript applications
+   - Identifies size regressions across releases
+   - Helps optimize application load performance
+
+================================================================================
+8. CRON MONITORING
+================================================================================
+   - Scheduled job monitoring — tracks cron jobs, background tasks, and
+     scheduled functions
+   - Check-in tracking — monitors missed, failed, and successful check-ins
+   - Failed check-in → error tracing — links failed jobs to related error issues
+   - Job health dashboard — see job status across all projects at a glance
+   - Customizable monitors — configure by environment, crontab or interval
+     schedule (down to the minute)
+   - Alerts when scheduled jobs fail or miss their expected check-in window
+
+================================================================================
+9. UPTIME MONITORING
+================================================================================
+   - HTTP endpoint monitoring — checks if URLs/endpoints are up
+   - Alerts when services go down or response times degrade
+   - Status page integration
+
+================================================================================
+10. LOGS — NEW
+================================================================================
+   - Structured log ingestion and search
+   - Logs linked to errors, traces, and replays for full context
+   - Query and filter logs alongside other Sentry data
+
+================================================================================
+11. ALERTING & NOTIFICATIONS
+================================================================================
+   - Issue alerts — trigger on first occurrence, regression, or escalation
+   - Metric alerts — threshold-based on error count, latency, throughput
+   - Anomaly detection alerts — ML-based spike/regression detection
+   - Multiple channels: Slack, email, PagerDuty, MS Teams, Discord, webhooks
+   - Alert rules — customizable conditions and filters
+
+================================================================================
+12. INTEGRATIONS
+================================================================================
+   - Source control: GitHub, GitLab, Bitbucket
+   - Project management: Jira, Linear, Asana, Shortcut, Trello
+   - Messaging: Slack, MS Teams, Discord
+   - Incident management: PagerDuty, OpsGenie
+   - CI/CD: Vercel, Netlify
+   - MCP Server — integrates Sentry context into AI coding agents
+   - 100+ SDKs covering all major languages and frameworks
+
+================================================================================
+13. SUPPORTED PLATFORMS & SDKS
+================================================================================
+   - Web: JavaScript, TypeScript, React, Next.js, Vue, Angular, Svelte
+   - Backend: Python, Node.js, Java, Go, Ruby, PHP, .NET, Rust, Elixir
+   - Mobile: iOS (Swift/ObjC), Android (Kotlin/Java), React Native, Flutter
+   - Game engines: Unity, Unreal Engine
+   - Laravel, Django, Spring, Rails, Express, FastAPI, and more
+
+================================================================================
+14. SOLUTIONS / USE CASES
+================================================================================
+   - Web / Full-Stack Development
+   - Mobile Crash Reporting
+   - Game Crash Reporting
+   - AI Observability — monitoring LLM and agent applications
+   - Application Performance Monitoring (APM)
+   - Real User Monitoring (RUM)
+   - E-commerce — conversion-impacting error detection
+   - Enterprise — SSO, SCIM, audit logs, data residency
+   - Startups — free tier with generous limits
+
+================================================================================
+15. DEVELOPER EXPERIENCE
+================================================================================
+   - 5-line SDK setup — no agents to install
+   - Self-hosted option available (open source)
+   - Sandbox environment for testing
+   - Comprehensive documentation and Sentry Answers Q&A
+   - Ownership rules — auto-assign issues by code ownership
+   - Release tracking — correlate deploys with error regressions
+   - Suspect commits — identifies the commit that likely introduced a bug
+
+================================================================================
+16. SECURITY & PRIVACY
+================================================================================
+   - SOC 2 Type II certified
+   - GDPR compliant
+   - Data residency options (US, EU)
+   - PII scrubbing — automatic and configurable sensitive data filtering
+   - Session Replay privacy controls — mask/block sensitive elements
+   - Self-hosted deployment option for full data control
+
+================================================================================

@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datadog Log Analyzer — Demo Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-card-hover: rgba(31, 41, 55, 0.8);
+            --border: rgba(99, 102, 241, 0.15);
+            --border-glow: rgba(99, 102, 241, 0.4);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --green: #22c55e;
+            --green-glow: rgba(34, 197, 94, 0.3);
+            --red: #ef4444;
+            --red-glow: rgba(239, 68, 68, 0.3);
+            --orange: #f59e0b;
+            --orange-glow: rgba(245, 158, 11, 0.3);
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6, 182, 212, 0.3);
+            --purple: #a855f7;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Background gradient mesh */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 20%, rgba(99, 102, 241, 0.08), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 60%, rgba(168, 85, 247, 0.06), transparent),
+                radial-gradient(ellipse 50% 30% at 50% 90%, rgba(6, 182, 212, 0.05), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 80px 24px 60px;
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.06) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent-light);
+            margin-bottom: 24px;
+            letter-spacing: 0.3px;
+        }
+
+        .hero-badge .pulse {
+            width: 8px; height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 var(--green-glow); }
+            50% { box-shadow: 0 0 0 6px transparent; }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #f1f5f9 30%, var(--accent-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+            font-weight: 400;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat .value {
+            font-size: 36px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-light);
+        }
+
+        .hero-stat .label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* ===== CONTAINER ===== */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        section { padding: 64px 0; }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 36px;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.06);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon { font-size: 18px; }
+
+        /* ===== GRID LAYOUTS ===== */
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+
+        /* ===== KPI ROW ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .kpi {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+
+        .kpi:hover { border-color: var(--border-glow); }
+
+        .kpi .kpi-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .kpi .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .kpi .kpi-change {
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .kpi .kpi-change.positive { color: var(--red); }
+        .kpi .kpi-change.negative { color: var(--green); }
+        .kpi .kpi-change.neutral { color: var(--text-muted); }
+
+        /* ===== ANOMALY LIST ===== */
+        .anomaly-list { list-style: none; }
+
+        .anomaly-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .anomaly-item:last-child { border-bottom: none; }
+
+        .anomaly-badge {
+            flex-shrink: 0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .anomaly-badge.critical {
+            background: var(--red-glow);
+            color: var(--red);
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+
+        .anomaly-badge.warning {
+            background: var(--orange-glow);
+            color: var(--orange);
+            border: 1px solid rgba(245,158,11,0.3);
+        }
+
+        .anomaly-desc {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .anomaly-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ===== ERROR TABLE ===== */
+        .error-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .error-table th {
+            text-align: left;
+            padding: 10px 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 11px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .error-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            vertical-align: top;
+        }
+
+        .error-table tr:hover td {
+            background: rgba(99, 102, 241, 0.03);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status-dot.error { background: var(--red); box-shadow: 0 0 6px var(--red-glow); }
+        .status-dot.warning { background: var(--orange); box-shadow: 0 0 6px var(--orange-glow); }
+        .status-dot.info { background: var(--cyan); box-shadow: 0 0 6px var(--cyan-glow); }
+
+        .service-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent-light);
+        }
+
+        /* ===== ARCHITECTURE ===== */
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 32px 0;
+        }
+
+        .arch-node {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 140px;
+            transition: all 0.3s;
+        }
+
+        .arch-node:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+        }
+
+        .arch-node .icon { font-size: 28px; margin-bottom: 6px; }
+        .arch-node .name { font-size: 13px; font-weight: 600; }
+        .arch-node .detail { font-size: 11px; color: var(--text-muted); }
+
+        .arch-arrow {
+            font-size: 20px;
+            color: var(--text-muted);
+            animation: arrow-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes arrow-pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; color: var(--accent-light); }
+        }
+
+        /* ===== FEATURES ===== */
+        .feature-card {
+            padding: 32px;
+        }
+
+        .feature-card .feature-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon.purple { background: rgba(168, 85, 247, 0.15); }
+        .feature-icon.cyan { background: rgba(6, 182, 212, 0.15); }
+        .feature-icon.green { background: rgba(34, 197, 94, 0.15); }
+        .feature-icon.orange { background: rgba(245, 158, 11, 0.15); }
+        .feature-icon.red { background: rgba(239, 68, 68, 0.15); }
+        .feature-icon.blue { background: rgba(99, 102, 241, 0.15); }
+
+        .feature-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ===== SLACK PREVIEW ===== */
+        .slack-preview {
+            background: #1a1d21;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            border: 1px solid #2c2f33;
+        }
+
+        .slack-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .slack-avatar {
+            width: 36px; height: 36px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .slack-name { font-weight: 700; font-size: 14px; }
+
+        .slack-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        .slack-body { font-size: 14px; line-height: 1.5; }
+
+        .slack-attachment {
+            border-left: 4px solid var(--red);
+            padding: 12px 16px;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .slack-attachment .att-title {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .slack-attachment .att-field {
+            display: flex;
+            gap: 32px;
+            margin-top: 8px;
+        }
+
+        .slack-attachment .att-field div {
+            flex: 1;
+        }
+
+        .slack-attachment .att-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .slack-attachment .att-value {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ===== TERMINAL ===== */
+        .terminal {
+            background: #0d1117;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #21262d;
+        }
+
+        .terminal-bar {
+            background: #161b22;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.r { background: #ff5f57; }
+        .terminal-dot.y { background: #febc2e; }
+        .terminal-dot.g { background: #28c840; }
+
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            line-height: 1.7;
+            color: #c9d1d9;
+            overflow-x: auto;
+        }
+
+        .terminal-body .prompt { color: var(--green); }
+        .terminal-body .cmd { color: #f1f5f9; font-weight: 600; }
+        .terminal-body .info { color: var(--cyan); }
+        .terminal-body .success { color: var(--green); }
+        .terminal-body .warn { color: var(--orange); }
+        .terminal-body .err { color: var(--red); }
+        .terminal-body .dim { color: #484f58; }
+
+        /* ===== CHART CONTAINERS ===== */
+        .chart-container {
+            position: relative;
+            height: 260px;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 48px 24px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        footer a { color: var(--accent-light); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .hero { padding: 48px 16px 40px; }
+            .hero-stats { gap: 24px; }
+            .hero-stat .value { font-size: 28px; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .arch-flow { flex-direction: column; }
+            .arch-arrow { transform: rotate(90deg); }
+        }
+
+        /* ===== ANIMATIONS ===== */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in 0.6s ease forwards;
+        }
+
+        @keyframes fade-in {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* ===== SECTION DIVIDER ===== */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+            margin: 0;
+        }
+
+        /* ===== Mode badge ===== */
+        .mode-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            justify-content: center;
+        }
+
+        .mode-tab {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+        }
+
+        .mode-tab.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--accent);
+            color: var(--accent-light);
+        }
+
+        .mode-tab:hover:not(.active) {
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        /* ===== Trend indicator ===== */
+        .trend-line {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .trend-line:last-child { border-bottom: none; }
+
+        .trend-service {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            min-width: 180px;
+        }
+
+        .trend-bar {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+
+        .trend-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1.5s ease;
+        }
+
+        .trend-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+    <div class="hero-badge fade-in">
+        <span class="pulse"></span>
+        Live Monitoring Active
+    </div>
+    <h1 class="fade-in delay-1">Datadog Log Analyzer</h1>
+    <p class="fade-in delay-2">
+        Intelligent log analysis agent with Z-score anomaly detection, pattern clustering,
+        error correlation, maintenance health checking, and automated alerting via Slack &amp; Jira.
+    </p>
+    <div class="hero-stats fade-in delay-3">
+        <div class="hero-stat">
+            <div class="value" id="counter-logs">0</div>
+            <div class="label">Logs Analyzed / 24h</div>
+        </div>
+        <div class="hero-stat">
+            <div class="value" id="counter-anomalies">0</div>
+            <div class="label">Anomalies Detected</div>
+        </div>
+        <div class="hero-stat">
+            <div class="value" id="counter-services">0</div>
+            <div class="label">Services Monitored</div>
+        </div>
+        <div class="hero-stat">
+            <div class="value" id="counter-uptime">0%</div>
+            <div class="label">Detection Uptime</div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+
+<!-- ===== ARCHITECTURE ===== -->
+<section>
+    <h2 class="section-title">⚙️ How It Works</h2>
+    <p class="section-subtitle">Two-tier analysis — server-side aggregation + intelligent sample analysis</p>
+
+    <div class="arch-flow">
+        <div class="arch-node">
+            <div class="icon">🏥</div>
+            <div class="name">Maintenance API</div>
+            <div class="detail">Service health check</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+            <div class="icon">🐕</div>
+            <div class="name">Datadog</div>
+            <div class="detail">2M+ logs/day</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+            <div class="icon">📊</div>
+            <div class="name">Tier 1: Aggregate</div>
+            <div class="detail">Server-side counts</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+            <div class="icon">🔬</div>
+            <div class="name">Tier 2: Analyze</div>
+            <div class="detail">5K sample deep-dive</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+            <div class="icon">🧠</div>
+            <div class="name">Detection Engine</div>
+            <div class="detail">Z-score + patterns</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+            <div class="icon">🚨</div>
+            <div class="name">Alerts</div>
+            <div class="detail">Slack + Jira</div>
+        </div>
+    </div>
+
+    <div class="mode-tabs">
+        <div class="mode-tab active">🖥️ Local CLI</div>
+        <div class="mode-tab">☁️ AWS Lambda (24/7)</div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== LIVE DASHBOARD ===== -->
+<section>
+    <h2 class="section-title">📡 Live Analysis Dashboard</h2>
+    <p class="section-subtitle">Last 24 hours — env:prod — all services</p>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+        <div class="kpi">
+            <div class="kpi-label">Total Errors</div>
+            <div class="kpi-value" style="color: var(--red);">4,218</div>
+            <div class="kpi-change positive">▲ 12% vs baseline</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Error Rate</div>
+            <div class="kpi-value" style="color: var(--orange);">0.21%</div>
+            <div class="kpi-change neutral">→ Stable</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Anomalies</div>
+            <div class="kpi-value" style="color: var(--purple);">3</div>
+            <div class="kpi-change positive">▲ 2 new today</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Error Bursts</div>
+            <div class="kpi-value" style="color: var(--cyan);">1</div>
+            <div class="kpi-change negative">▼ Down from 4</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Patterns Found</div>
+            <div class="kpi-value" style="color: var(--accent-light);">12</div>
+            <div class="kpi-change neutral">Top: SQL timeout</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Health Checks / h</div>
+            <div class="kpi-value" style="color: var(--green);">12</div>
+            <div class="kpi-change negative">✓ All services OK</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid-2" style="margin-bottom: 24px;">
+        <div class="card">
+            <div class="card-title"><span class="icon">📈</span> Error Volume Over Time</div>
+            <div class="chart-container">
+                <canvas id="volumeChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title"><span class="icon">🧩</span> Errors by Service</div>
+            <div class="chart-container">
+                <canvas id="serviceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service breakdown bars -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-title"><span class="icon">📊</span> Service Error Distribution</div>
+        <div id="service-bars"></div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Anomalies -->
+        <div class="card">
+            <div class="card-title"><span class="icon">🚨</span> Detected Anomalies</div>
+            <ul class="anomaly-list">
+                <li class="anomaly-item">
+                    <span class="anomaly-badge critical">Critical</span>
+                    <div>
+                        <div class="anomaly-desc">Volume spike: 847 errors in 5min window</div>
+                        <div class="anomaly-meta">konggateway — z-score: +4.2 — today 21:31</div>
+                    </div>
+                </li>
+                <li class="anomaly-item">
+                    <span class="anomaly-badge critical">Critical</span>
+                    <div>
+                        <div class="anomaly-desc">Error burst: 23 errors in 60s across 3 services</div>
+                        <div class="anomaly-meta">aggregatoradapter, konggateway, auth — today 08:34</div>
+                    </div>
+                </li>
+                <li class="anomaly-item">
+                    <span class="anomaly-badge warning">Warning</span>
+                    <div>
+                        <div class="anomaly-desc">Service 'corecustomeragreement' abnormal count</div>
+                        <div class="anomaly-meta">578 errors (avg: 180, z-score: +2.8) — today 00:01</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Top error groups -->
+        <div class="card" style="overflow-x: auto;">
+            <div class="card-title"><span class="icon">🔍</span> Top Error Groups</div>
+            <table class="error-table">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Error</th>
+                        <th>Count</th>
+                        <th>Trend</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="service-tag">konggateway</span></td>
+                        <td><span class="status-dot error"></span>invalid exp response</td>
+                        <td style="font-family: 'JetBrains Mono'; font-weight: 600;">1,247</td>
+                        <td style="color: var(--red);">▲ +34%</td>
+                    </tr>
+                    <tr>
+                        <td><span class="service-tag">corecustomeragreement</span></td>
+                        <td><span class="status-dot error"></span>holds mismatch warning</td>
+                        <td style="font-family: 'JetBrains Mono'; font-weight: 600;">578</td>
+                        <td style="color: var(--orange);">▲ +12%</td>
+                    </tr>
+                    <tr>
+                        <td><span class="service-tag">clusterautoscaler</span></td>
+                        <td><span class="status-dot warning"></span>node eligibility check</td>
+                        <td style="font-family: 'JetBrains Mono'; font-weight: 600;">350</td>
+                        <td style="color: var(--text-muted);">→ stable</td>
+                    </tr>
+                    <tr>
+                        <td><span class="service-tag">pushnotificationsender</span></td>
+                        <td><span class="status-dot error"></span>no ACTIVE tokens</td>
+                        <td style="font-family: 'JetBrains Mono'; font-weight: 600;">302</td>
+                        <td style="color: var(--green);">▼ -8%</td>
+                    </tr>
+                    <tr>
+                        <td><span class="service-tag">aggregatoradapter</span></td>
+                        <td><span class="status-dot error"></span>foreign key cleanup fail</td>
+                        <td style="font-family: 'JetBrains Mono'; font-weight: 600;">12</td>
+                        <td style="color: var(--text-muted);">→ stable</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== DETECTION ALGORITHMS ===== -->
+<section>
+    <h2 class="section-title">🧠 Detection & AI Analysis</h2>
+    <p class="section-subtitle">Four detection algorithms + AI-powered anomaly interpretation via AWS Bedrock</p>
+
+    <div class="grid-2">
+        <div class="card feature-card">
+            <div class="feature-icon purple">📐</div>
+            <h3>Z-Score Volume Anomaly</h3>
+            <p>Logs are bucketed into 5-minute windows. The Z-score formula <code style="color: var(--cyan);">(x - μ) / σ</code> flags any window exceeding 2.5 standard deviations from the mean — catching sudden spikes or unusual drops.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon red">💥</div>
+            <h3>Error Burst Detection</h3>
+            <p>A sliding window of 60 seconds scans error logs. When 10+ errors concentrate within a single window, it triggers a burst alert — catching rapid failure cascades across services.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon cyan">🔗</div>
+            <h3>Error Correlation</h3>
+            <p>Errors are fingerprinted by tokenizing messages (stripping IDs, IPs, timestamps). Similar errors cluster together, tracking affected services and identifying root-cause candidates by earliest occurrence.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon green">📈</div>
+            <h3>Trend Analysis</h3>
+            <p>Linear regression tracks the direction of log volumes — <strong>increasing</strong>, <strong>decreasing</strong>, or <strong>stable</strong>. Compares the current window against the historical baseline to catch gradual degradation.</p>
+        </div>
+        <div class="card feature-card" style="border: 1px solid rgba(139,92,246,0.3); background: linear-gradient(135deg, rgba(139,92,246,0.05), rgba(59,130,246,0.05));">
+            <div class="feature-icon" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🤖</div>
+            <h3 style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI Anomaly Interpreter</h3>
+            <p>Every detected anomaly is sent to <strong>AWS Bedrock (Claude 3 Haiku)</strong> for AI-powered interpretation. The model analyzes raw metrics, sample error messages, and service context to generate a <strong>root cause hypothesis</strong>, <strong>impact assessment</strong>, and <strong>recommended investigation steps</strong> — delivered directly in Slack and Jira.</p>
+            <div style="margin-top:10px;display:inline-block;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:3px 10px;font-size:11px;color:#a78bfa;font-weight:600;">~$0.0001 per analysis</div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== SLACK ALERT PREVIEW ===== -->
+<section>
+    <h2 class="section-title">🔔 Alert Integration</h2>
+    <p class="section-subtitle">Automatic Slack alerts and Jira ticket creation when anomalies are detected</p>
+
+    <!-- Top row: Slack + Jira side by side -->
+    <div class="grid-2" style="margin-bottom: 20px;">
+        <div class="card" style="padding: 20px;">
+            <div class="card-title"><span class="icon">💬</span> Slack Alert Preview</div>
+
+            <div class="slack-preview">
+                <div class="slack-header">
+                    <div class="slack-avatar">🐕</div>
+                    <div>
+                        <span class="slack-name">dd-log-analyzer</span>
+                        <span class="slack-time">Today at 21:31</span>
+                    </div>
+                </div>
+                <div class="slack-body">
+                    🚨 <strong>Anomaly Detected</strong> — Volume spike in production
+                </div>
+                <div class="slack-attachment">
+                    <div class="att-title">konggateway — Error Burst</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+                        847 errors in 5min window (expected ~180, z-score: +4.2)
+                    </div>
+                    <div class="att-field">
+                        <div>
+                            <div class="att-label">Severity</div>
+                            <div class="att-value" style="color: var(--red);">CRITICAL</div>
+                        </div>
+                        <div>
+                            <div class="att-label">Environment</div>
+                            <div class="att-value">prod</div>
+                        </div>
+                        <div>
+                            <div class="att-label">Jira</div>
+                            <div class="att-value" style="color: var(--accent-light);">OPS-4521</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jira ticket preview -->
+        <div class="card" style="padding: 20px;">
+            <div class="card-title"><span class="icon">🎫</span> Jira Ticket (auto-created)</div>
+            <div style="background:#0c1929;border-radius:12px;padding:20px;border:1px solid #1d3557;font-size:13px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                    <div style="width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,#0052cc,#0065ff);display:flex;align-items:center;justify-content:center;font-size:16px;">🔵</div>
+                    <div>
+                        <div style="font-weight:700;font-size:14px;color:#e2e8f0;">Jira — OPS Project</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Auto-created by dd-log-analyzer</div>
+                    </div>
+                </div>
+                <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:12px;">🚨 [CRITICAL] konggateway: Volume spike Z+4.2</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Ticket</div>
+                        <div style="color:var(--accent-light);font-family:'JetBrains Mono',monospace;font-weight:600;">OPS-4521</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Priority</div>
+                        <div style="color:var(--red);font-weight:600;">🔴 Critical</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Service</div>
+                        <div style="color:var(--cyan);font-family:'JetBrains Mono',monospace;">konggateway</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Environment</div>
+                        <div style="color:var(--text-primary);">prod</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Z-Score</div>
+                        <div style="color:var(--orange);font-family:'JetBrains Mono',monospace;">+4.2</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Status</div>
+                        <div style="color:var(--green);">✅ Deduped (no dup)</div>
+                    </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;font-size:12px;color:var(--text-secondary);border:1px solid rgba(255,255,255,0.05);">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                        <span style="background:linear-gradient(135deg,#8b5cf6,#3b82f6);border-radius:3px;padding:1px 6px;font-size:10px;color:white;font-weight:700;">AI</span>
+                        <strong>Root Cause Analysis:</strong>
+                    </div>
+                    Sudden error spike to 847 errors (baseline ~180) on konggateway is likely caused by an upstream dependency failure or misconfigured Kong route. The error pattern "invalid exp response" suggests expired JWT tokens or stale TLS certificates. Investigate Kong health-check config and upstream service certificates. Check aggregatoradapter for cascading failures.
+                    <br><span style="color:var(--accent-light);">→ Datadog deep-link attached</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom row: CLI Output full-width -->
+    <div class="card" style="padding: 24px;">
+        <div class="card-title"><span class="icon">🖥️</span> CLI Output</div>
+        <div class="terminal">
+            <div class="terminal-bar">
+                <div class="terminal-dot r"></div>
+                <div class="terminal-dot y"></div>
+                <div class="terminal-dot g"></div>
+                <div class="terminal-title">zsh — dd-logs</div>
+            </div>
+            <div class="terminal-body" style="font-size: 13.5px; line-height: 1.8; padding: 28px 32px; white-space: normal;">
+
+                <!-- health command -->
+                <div style="margin-bottom: 16px;">
+                    <div><span class="prompt">❯</span> <span class="cmd">dd-logs health</span></div>
+                    <div style="margin-top: 6px; padding-left: 4px;">
+                        <div><span class="success">✅</span> <span style="color:#c9d1d9;">Datadog API</span> <span class="dim">—</span> <span class="success">Connected</span> &nbsp;<span class="dim">│</span>&nbsp; Site: <span class="info">datadoghq.eu</span> &nbsp;<span class="dim">│</span>&nbsp; Index: <span class="info">main</span></div>
+                        <div><span class="success">✅</span> <span style="color:#c9d1d9;">Slack</span> <span class="dim">—</span> <span class="success">Webhook configured</span></div>
+                        <div><span class="success">✅</span> <span style="color:#c9d1d9;">Jira</span> <span class="dim">—</span> <span class="success">Configured</span> &nbsp;<span class="dim">│</span>&nbsp; Project: <span class="info">OPS</span></div>
+                        <div style="margin-top: 6px;"><span class="info">📋 Active Presets (3):</span> <span class="dim">kong-errors &nbsp; api-5xx &nbsp; aggregator-errors</span></div>
+                        <div><span class="info">🔒 Global Scope:</span> <span class="dim">env:prod</span></div>
+                    </div>
+                </div>
+
+                <!-- watch command -->
+                <div>
+                    <div><span class="prompt">❯</span> <span class="cmd">dd-logs watch --all-services --interval 60</span></div>
+                    <div style="color:#484f58; margin: 4px 0 10px 0; font-size:12px; letter-spacing:1px;">──── Cycle 1 (last 2m) ────────────────────────────────────────</div>
+
+                    <!-- Phase 1 -->
+                    <div style="margin-bottom: 12px;">
+                        <div><span class="info">  Phase 1:</span> <span style="color:#c9d1d9;">Checking maintenance API...</span></div>
+                        <div style="margin-top: 4px; margin-left: 2px;">
+                            <div style="display:inline-block; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.35); border-radius:8px; padding:12px 18px; margin-top:6px; width:100%; box-sizing:border-box;">
+                                <div style="font-weight:700; color:var(--red); margin-bottom:8px;">🏥 MAINTENANCE WINDOW &nbsp;<span class="dim">—</span>&nbsp; 1 unhealthy service(s)</div>
+                                <div style="background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.25); border-radius:6px; padding:10px 14px;">
+                                    <div style="font-weight:600; color:var(--orange); margin-bottom:4px;">konggateway — Kong Issue</div>
+                                    <div style="color:#c9d1d9;"><span class="warn">⚠️</span>  No errors in Datadog for <span class="info">konggateway</span></div>
+                                    <div style="color:var(--red); margin-top:2px;">→ Root Cause: Kong Gateway</div>
+                                    <div style="color:#8b949e; margin-top:2px; font-size:12.5px;">Check Kong routes, upstreams, and health-check config.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase 2 -->
+                    <div style="margin-bottom: 12px;">
+                        <div><span class="info">  Phase 2:</span> <span style="color:#c9d1d9;">Discovering services...</span></div>
+                        <div style="margin-top:4px;"><span class="info">  Found 10 service(s):</span> <span class="dim">konggateway, auth-service, user-service, corecustomeragreement, aggregatoradapter...</span></div>
+                    </div>
+
+                    <!-- user-service anomaly panel -->
+                    <div style="margin-bottom: 12px; margin-left: 2px;">
+                        <div style="background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:14px 18px;">
+                            <div style="font-weight:700; color:var(--orange); margin-bottom:10px; font-size:13px; letter-spacing:0.3px;">user-service</div>
+                            <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+                                <span style="background:rgba(245,158,11,0.2); color:var(--orange); border:1px solid rgba(245,158,11,0.4); border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; text-transform:uppercase;">⚠️ Warning</span>
+                                <span style="color:#8b949e; font-size:12px;">│</span>
+                                <span style="background:rgba(239,68,68,0.15); color:var(--red); border:1px solid rgba(239,68,68,0.3); border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; text-transform:uppercase;">Error Burst</span>
+                            </div>
+                            <div style="color:#c9d1d9; font-size:13px;"><span style="color:#8b949e;">Description:</span>  Error burst: 5 errors in 120s across 1 service(s)</div>
+                            <div style="display:flex; gap:32px; margin-top:6px;">
+                                <div><span style="color:#8b949e; font-size:12px;">Actual</span><br><span class="err" style="font-weight:700; font-size:15px;">5</span> <span style="color:#8b949e; font-size:12px;">logs</span></div>
+                                <div><span style="color:#8b949e; font-size:12px;">Expected</span><br><span class="success" style="font-weight:700; font-size:15px;">~0</span> <span style="color:#8b949e; font-size:12px;">logs</span></div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px; padding-left: 4px;">
+                            <span class="success">✓</span> <span style="color:#c9d1d9;">Slack alert sent</span>
+                            &nbsp;<span class="dim">│</span>&nbsp;
+                            <span class="success">✓</span> <span style="color:var(--accent-light);">Jira OPS-4522</span> <span style="color:#c9d1d9;">created</span>
+                        </div>
+                    </div>
+
+                    <!-- All services table -->
+                    <div style="margin-top: 16px;">
+                        <div style="font-size:12px; color:#8b949e; letter-spacing:1px; margin-bottom:8px; text-align:center;">🔍 All Services — Anomaly Scan</div>
+                        <table style="width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:12.5px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #30363d;">
+                                    <th style="text-align:left; padding:6px 10px; color:#8b949e; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Service</th>
+                                    <th style="text-align:right; padding:6px 10px; color:#8b949e; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Total</th>
+                                    <th style="text-align:right; padding:6px 10px; color:#8b949e; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Errors</th>
+                                    <th style="text-align:right; padding:6px 10px; color:#8b949e; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Anomalies</th>
+                                    <th style="text-align:left; padding:6px 10px; color:#8b949e; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Trend</th>
+                                    <th style="text-align:center; padding:6px 10px; color:#8b949e; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="background:rgba(239,68,68,0.04); border-bottom:1px solid #21262d;">
+                                    <td style="padding:8px 10px; color:var(--cyan);">user-service</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">52</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--red);">9</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--red); font-weight:700;">1</td>
+                                    <td style="padding:8px 10px; color:#8b949e;">→ stable</td>
+                                    <td style="padding:8px 10px; text-align:center;">🚨</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid #21262d;">
+                                    <td style="padding:8px 10px; color:var(--cyan);">auth-service</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">56</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">2</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--green); font-weight:700;">0</td>
+                                    <td style="padding:8px 10px; color:#8b949e;">→ stable</td>
+                                    <td style="padding:8px 10px; text-align:center;">✅</td>
+                                </tr>
+                                <tr style="background:rgba(239,68,68,0.04); border-bottom:1px solid #21262d;">
+                                    <td style="padding:8px 10px; color:var(--cyan);">kong-gateway</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">847</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--red);">847</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--red); font-weight:700;">1</td>
+                                    <td style="padding:8px 10px; color:var(--red);">📈 incr.</td>
+                                    <td style="padding:8px 10px; text-align:center;">🚨</td>
+                                </tr>
+                                <tr style="background:rgba(239,68,68,0.04); border-bottom:1px solid #21262d;">
+                                    <td style="padding:8px 10px; color:var(--cyan);">corecustomeragreement</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">578</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--orange);">578</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--red); font-weight:700;">1</td>
+                                    <td style="padding:8px 10px; color:#8b949e;">→ stable</td>
+                                    <td style="padding:8px 10px; text-align:center;">🚨</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid #21262d;">
+                                    <td style="padding:8px 10px; color:var(--cyan);">aggregatoradapter</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">34</td>
+                                    <td style="padding:8px 10px; text-align:right; color:#c9d1d9;">12</td>
+                                    <td style="padding:8px 10px; text-align:right; color:var(--green); font-weight:700;">0</td>
+                                    <td style="padding:8px 10px; color:var(--green);">📉 decr.</td>
+                                    <td style="padding:8px 10px; text-align:center;">✅</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div style="margin-top: 12px; padding: 10px 12px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:6px; color:var(--red); font-weight:700;">
+                            🚨 3 total anomaly(ies) across 10 service(s)
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== FEATURES ===== -->
+<section>
+    <h2 class="section-title">🚀 Key Capabilities</h2>
+    <p class="section-subtitle">Built for production environments processing millions of logs daily</p>
+
+    <div class="grid-3">
+        <div class="card feature-card">
+            <div class="feature-icon blue">⚡</div>
+            <h3>High Volume Ready</h3>
+            <p>Tier 1 aggregation covers 2M+ logs server-side. Only 5K are downloaded for deep analysis.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon purple">🔄</div>
+            <h3>Dual Deployment</h3>
+            <p>Run ad-hoc via CLI or deploy as AWS Lambda for 24/7 automated monitoring.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon orange">🎯</div>
+            <h3>Preset Queries & Service Discovery</h3>
+            <p>Use pre-configured presets (kong-errors, api-5xx) or use the <code>--all-services</code> flag to automatically discover and analyze every active service.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon green">📊</div>
+            <h3>Smart S3 Reports</h3>
+            <p>Generates rich HTML &amp; JSON reports, uploads to S3 with pre-signed URLs, and skips presets with zero findings to save storage.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon red">🔕</div>
+            <h3>Multi-Service Deduplication</h3>
+            <p>Smart fingerprinting (SQLite locally, DynamoDB on Lambda) prevents alert fatigue while ensuring unique alerts fire for simultaneous cross-service anomalies.</p>
+        </div>
+        <div class="card feature-card">
+            <div class="feature-icon cyan">🏥</div>
+            <h3>Maintenance Health Check</h3>
+            <p>Every <code>watch</code> cycle hits a configurable maintenance API. Unhealthy services trigger per-service Datadog drilldowns — with automatic Kong Gateway attribution when no errors are found in DD.</p>
+        </div>
+    </div>
+</section>
+
+</div>
+
+<!-- ===== CLI COMMANDS ===== -->
+<section style="background: rgba(99,102,241,0.03); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 64px 0;">
+<div class="container">
+    <h2 class="section-title">⌨️ CLI Commands</h2>
+    <p class="section-subtitle">All commands share the same analysis engine — run ad-hoc or automate</p>
+
+    <div style="overflow-x:auto;">
+    <table class="error-table" style="width:100%;">
+        <thead>
+            <tr>
+                <th>Command</th>
+                <th>Description</th>
+                <th>Key Flags</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code style="color:var(--green);font-family:'JetBrains Mono',monospace;font-size:12px;">dd-logs health</code></td>
+                <td>Verify Datadog API + Slack + Jira connectivity and list active presets</td>
+                <td><span style="color:var(--text-muted);font-size:12px;">—</span></td>
+            </tr>
+            <tr>
+                <td><code style="color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:12px;">dd-logs query</code></td>
+                <td>Search and display raw logs from Datadog</td>
+                <td><code style="color:var(--text-muted);font-size:11px;">--time --limit --preset</code></td>
+            </tr>
+            <tr>
+                <td><code style="color:var(--accent-light);font-family:'JetBrains Mono',monospace;font-size:12px;">dd-logs analyze</code></td>
+                <td>Two-tier full analysis: patterns, anomalies, errors, trends. Supports Slack &amp; Jira notifications</td>
+                <td><code style="color:var(--text-muted);font-size:11px;">--notify-slack --create-jira --format html|json --output</code></td>
+            </tr>
+            <tr>
+                <td><code style="color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:12px;">dd-logs report</code></td>
+                <td>Generate a standalone HTML or JSON report file without console output</td>
+                <td><code style="color:var(--text-muted);font-size:11px;">--format html|json --output &lt;path&gt; --preset</code></td>
+            </tr>
+            <tr>
+                <td><code style="color:var(--red);font-family:'JetBrains Mono',monospace;font-size:12px;">dd-logs watch</code></td>
+                <td>Continuous monitoring loop: maintenance API check (Phase 1) + anomaly analysis (Phase 2) every interval</td>
+                <td><code style="color:var(--text-muted);font-size:11px;">--interval --all-services --maintenance-url --no-slack --no-jira</code></td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+    <div class="grid-3" style="margin-top:32px;">
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Example — Error analysis</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#c9d1d9;line-height:1.8;">
+                <span style="color:var(--green);">❯</span> <span style="font-weight:600;">dd-logs analyze \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">&quot;env:prod service:konggateway&quot; \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--time &quot;last 1h&quot; \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--notify-slack \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--create-jira</span>
+            </div>
+        </div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Example — HTML report</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#c9d1d9;line-height:1.8;">
+                <span style="color:var(--green);">❯</span> <span style="font-weight:600;">dd-logs report \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">&quot;env:prod&quot; \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--time &quot;last 24h&quot; \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--format html \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--output report.html</span>
+            </div>
+        </div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Example — 24/7 watch mode</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#c9d1d9;line-height:1.8;">
+                <span style="color:var(--green);">❯</span> <span style="font-weight:600;">dd-logs watch \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--all-services \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--interval 60 \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">--maintenance-url \</span><br>
+                &nbsp;&nbsp;<span style="color:var(--text-muted);">&quot;https://api.prod.../maintenance&quot;</span>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+    <p>Datadog Log Analyzer Agent — Built by the DevOps Engineering Team</p>
+    <p style="margin-top: 8px;">Python · Datadog API v2 · AWS Lambda · Terraform · Slack · Jira</p>
+</footer>
+
+<script>
+    // ===== ANIMATED COUNTERS =====
+    function animateCounter(id, target, suffix = '', duration = 2000) {
+        const el = document.getElementById(id);
+        const start = 0;
+        const startTime = performance.now();
+
+        function update(current) {
+            const elapsed = current - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const value = Math.floor(eased * target);
+
+            if (target > 1000) {
+                el.textContent = value.toLocaleString() + suffix;
+            } else {
+                el.textContent = value + suffix;
+            }
+
+            if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+    }
+
+    setTimeout(() => {
+        animateCounter('counter-logs', 2147583);
+        animateCounter('counter-anomalies', 3);
+        animateCounter('counter-services', 24);
+        animateCounter('counter-uptime', 99, '%');
+    }, 500);
+
+    // ===== SERVICE BARS =====
+    const services = [
+        { name: 'konggateway', count: 1247, color: '#ef4444' },
+        { name: 'corecustomeragreement', count: 578, color: '#f59e0b' },
+        { name: 'clusterautoscaler', count: 350, color: '#06b6d4' },
+        { name: 'pushnotificationsender', count: 302, color: '#a855f7' },
+        { name: 'externaldns', count: 292, color: '#6366f1' },
+        { name: 'aggregatoradapter', count: 12, color: '#22c55e' },
+    ];
+
+    const maxCount = services[0].count;
+    const barsContainer = document.getElementById('service-bars');
+
+    services.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'trend-line';
+        row.innerHTML = `
+            <div class="trend-service">${s.name}</div>
+            <div class="trend-bar">
+                <div class="trend-fill" style="width: 0%; background: ${s.color};" data-width="${(s.count / maxCount * 100)}%"></div>
+            </div>
+            <div class="trend-count" style="color: ${s.color}">${s.count.toLocaleString()}</div>
+        `;
+        barsContainer.appendChild(row);
+    });
+
+    // Animate bars
+    setTimeout(() => {
+        document.querySelectorAll('.trend-fill').forEach(bar => {
+            bar.style.width = bar.dataset.width;
+        });
+    }, 800);
+
+    // ===== VOLUME CHART =====
+    const hours = Array.from({length: 24}, (_, i) => {
+        const h = (14 + i) % 24;
+        return `${h.toString().padStart(2, '0')}:00`;
+    });
+
+    // Simulated error volume data with a spike at 21:00
+    const volumeData = [120, 115, 130, 125, 140, 135, 110, 105, 145, 155, 160, 170,
+                        180, 165, 150, 145, 160, 175, 190, 380, 847, 420, 210, 180];
+
+    const volumeCtx = document.getElementById('volumeChart').getContext('2d');
+    const gradient = volumeCtx.createLinearGradient(0, 0, 0, 260);
+    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+    gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+    const anomalyGradient = volumeCtx.createLinearGradient(0, 0, 0, 260);
+    anomalyGradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+    anomalyGradient.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+
+    // Color points - spike ones in red
+    const pointColors = volumeData.map(v => v > 400 ? '#ef4444' : '#6366f1');
+    const pointRadius = volumeData.map(v => v > 400 ? 6 : 0);
+
+    new Chart(volumeCtx, {
+        type: 'line',
+        data: {
+            labels: hours,
+            datasets: [{
+                label: 'Error Count',
+                data: volumeData,
+                borderColor: '#6366f1',
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2.5,
+                pointBackgroundColor: pointColors,
+                pointBorderColor: pointColors,
+                pointRadius: pointRadius,
+                pointHoverRadius: 6,
+            }, {
+                label: 'Baseline (μ)',
+                data: Array(24).fill(180),
+                borderColor: 'rgba(148, 163, 184, 0.3)',
+                borderDash: [6, 4],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+            }, {
+                label: 'Threshold (μ+2.5σ)',
+                data: Array(24).fill(350),
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                borderDash: [4, 4],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 }
+                },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f1f5f9',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(99, 102, 241, 0.3)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 12 },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                },
+                y: {
+                    ticks: { color: '#64748b', font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            },
+            interaction: { intersect: false, mode: 'index' },
+        }
+    });
+
+    // ===== SERVICE DONUT CHART =====
+    const serviceCtx = document.getElementById('serviceChart').getContext('2d');
+    new Chart(serviceCtx, {
+        type: 'doughnut',
+        data: {
+            labels: services.map(s => s.name),
+            datasets: [{
+                data: services.map(s => s.count),
+                backgroundColor: services.map(s => s.color),
+                borderColor: '#111827',
+                borderWidth: 3,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#94a3b8',
+                        font: { size: 11 },
+                        padding: 12,
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        borderRadius: 3,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f1f5f9',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(99, 102, 241, 0.3)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                }
+            }
+        }
+    });
+
+    // ===== INTERSECTION OBSERVER FOR ANIMATIONS =====
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('fade-in');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.card').forEach(card => observer.observe(card));
+</script>
+
+</body>
+</html>

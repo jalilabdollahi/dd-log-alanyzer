@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DD Log Analyzer — Demo Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080c18;
+      --bg2: #0f1624;
+      --card: rgba(15, 22, 36, 0.85);
+      --border: rgba(99,102,241,0.18);
+      --glow:  rgba(99,102,241,0.35);
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --purple: #a855f7;
+      --cyan: #06b6d4;
+      --green: #22c55e;
+      --orange: #f59e0b;
+      --red: #ef4444;
+      --t1: #f1f5f9;
+      --t2: #94a3b8;
+      --t3: #64748b;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--t1);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ────── background mesh ────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 15% 15%, rgba(99,102,241,.09), transparent),
+        radial-gradient(ellipse 60% 40% at 85% 70%, rgba(168,85,247,.07), transparent),
+        radial-gradient(ellipse 40% 30% at 50% 90%, rgba(6,182,212,.05), transparent);
+      pointer-events: none;
+    }
+
+    /* ────── deck container ────── */
+    #deck {
+      position: relative; z-index: 1;
+      width: 100%; height: 100%;
+    }
+
+    /* ────── slides ────── */
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 64px;
+      opacity: 0;
+      transform: translateX(60px);
+      transition: opacity .45s ease, transform .45s ease;
+      pointer-events: none;
+    }
+    .slide.active {
+      opacity: 1; transform: translateX(0);
+      pointer-events: all;
+    }
+    .slide.exit-left {
+      opacity: 0; transform: translateX(-60px);
+    }
+
+    /* ────── progress bar ────── */
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      transition: width .4s ease;
+      z-index: 100;
+    }
+
+    /* ────── controls ────── */
+    #controls {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: 16px;
+      z-index: 100;
+    }
+    #controls button {
+      background: rgba(99,102,241,.12);
+      border: 1px solid var(--border);
+      color: var(--t2);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    #controls button:hover { background: rgba(99,102,241,.25); color: var(--t1); }
+    #slide-counter {
+      font-size: 12px; color: var(--t3);
+      font-variant-numeric: tabular-nums;
+      min-width: 52px; text-align: center;
+    }
+
+    /* ────── slide number badge (top-right) ────── */
+    #slide-badge {
+      position: fixed; top: 24px; right: 32px;
+      font-size: 11px; color: var(--t3);
+      z-index: 100;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ────── keyboard hint ────── */
+    #hint {
+      position: fixed; bottom: 28px; right: 32px;
+      font-size: 11px; color: var(--t3);
+      z-index: 100;
+    }
+
+    /* ══════════════════ SHARED COMPONENTS ══════════════════ */
+
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      border: 1px solid;
+    }
+    .tag-purple { background: rgba(168,85,247,.12); color: var(--purple); border-color: rgba(168,85,247,.3); }
+    .tag-cyan   { background: rgba(6,182,212,.12);  color: var(--cyan);   border-color: rgba(6,182,212,.3); }
+    .tag-green  { background: rgba(34,197,94,.12);  color: var(--green);  border-color: rgba(34,197,94,.3); }
+    .tag-orange { background: rgba(245,158,11,.12); color: var(--orange); border-color: rgba(245,158,11,.3); }
+    .tag-red    { background: rgba(239,68,68,.12);  color: var(--red);    border-color: rgba(239,68,68,.3); }
+    .tag-accent { background: rgba(99,102,241,.12); color: var(--accent2); border-color: rgba(99,102,241,.3); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 28px;
+      backdrop-filter: blur(12px);
+    }
+    .card-glow { box-shadow: 0 0 32px rgba(99,102,241,.12); }
+
+    .divider {
+      width: 60px; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      border-radius: 4px;
+      margin: 16px auto;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .9em;
+      background: rgba(99,102,241,.1);
+      padding: 2px 6px; border-radius: 4px;
+      color: var(--accent2);
+    }
+
+    .code-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; line-height: 1.8;
+      background: rgba(0,0,0,.45);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      color: #a5f3fc;
+      white-space: pre;
+      overflow: hidden;
+    }
+    .code-block .dim { color: var(--t3); }
+    .code-block .kw  { color: var(--purple); }
+    .code-block .str { color: var(--green); }
+    .code-block .flag{ color: var(--orange); }
+
+    /* ══════════════════ SLIDE 1 — HERO ══════════════════ */
+    #s1 .hero-logo {
+      font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--t3); margin-bottom: 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    #s1 .hero-logo::before,
+    #s1 .hero-logo::after {
+      content: ''; display: block;
+      height: 1px; width: 40px;
+      background: var(--border);
+    }
+
+    #s1 h1 {
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 900; line-height: 1.1;
+      text-align: center;
+      background: linear-gradient(135deg, #f1f5f9 0%, var(--accent2) 50%, var(--purple) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -.02em;
+    }
+    #s1 .subtitle {
+      font-size: 1.15rem; color: var(--t2);
+      text-align: center; margin-top: 20px;
+      max-width: 680px; line-height: 1.6;
+    }
+    #s1 .pill-row {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      justify-content: center; margin-top: 36px;
+    }
+    #s1 .date-line {
+      margin-top: 48px; font-size: 12px; color: var(--t3);
+      letter-spacing: .1em; text-transform: uppercase;
+    }
+
+    /* ══════════════════ SLIDE 2 — PROBLEM ══════════════════ */
+    #s2 .problem-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; width: 100%; max-width: 960px;
+    }
+    #s2 .problem-item {
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    #s2 .p-icon {
+      min-width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    #s2 h2 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; text-align: center; }
+    #s2 .lead { color: var(--t2); text-align: center; margin-bottom: 40px; font-size: 1.05rem; }
+    #s2 .p-title { font-weight: 600; margin-bottom: 4px; }
+    #s2 .p-desc  { font-size: 14px; color: var(--t2); line-height: 1.5; }
+
+    /* ══════════════════ SLIDE 3 — FEATURES ══════════════════ */
+    #s3 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s3 .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px; width: 100%; max-width: 1000px;
+    }
+    #s3 .feat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    #s3 .feat:hover {
+      border-color: var(--glow);
+      box-shadow: 0 0 24px rgba(99,102,241,.15);
+    }
+    #s3 .feat-icon { font-size: 26px; margin-bottom: 10px; }
+    #s3 .feat-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+    #s3 .feat-desc  { font-size: 13px; color: var(--t2); line-height: 1.5; }
+
+    /* ══════════════════ SLIDE 4 — ARCHITECTURE ══════════════════ */
+    #s4 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s4 .arch-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 20px; width: 100%; max-width: 1060px;
+    }
+    #s4 .arch-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 22px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    #s4 .arch-badge {
+      font-size: 11px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 4px 10px; border-radius: 8px; width: fit-content;
+    }
+    #s4 .arch-title { font-size: 1.1rem; font-weight: 700; }
+    #s4 .arch-desc  { font-size: 13px; color: var(--t2); line-height: 1.55; }
+    #s4 .arch-list  { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    #s4 .arch-list li {
+      font-size: 13px; color: var(--t2);
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    #s4 .arch-list li::before { content: '›'; color: var(--accent2); font-weight: 700; }
+
+    /* ══════════════════ SLIDE 5 — TWO-TIER ENGINE ══════════════════ */
+    #s5 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s5 .engine-wrap {
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      gap: 16px; align-items: center; width: 100%; max-width: 960px;
+    }
+    #s5 .tier {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px 22px;
+    }
+    #s5 .tier-label {
+      font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+      font-weight: 700; margin-bottom: 10px;
+    }
+    #s5 .tier-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 10px; }
+    #s5 .tier-dot-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    #s5 .tier-dot-list li {
+      font-size: 13px; color: var(--t2);
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    #s5 .tier-dot-list li::before { content: '●'; font-size: 8px; margin-top: 4px; }
+    #s5 .arrow-box {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      color: var(--accent2);
+    }
+    #s5 .flow-right { font-size: 28px; }
+    #s5 .merge-box {
+      background: rgba(99,102,241,.12); border: 1px solid var(--glow);
+      border-radius: 14px; padding: 18px 22px;
+      width: 100%; max-width: 960px; margin-top: 16px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    #s5 .merge-icon { font-size: 28px; }
+    #s5 .merge-text { font-size: 13px; color: var(--t2); line-height: 1.55; }
+
+    /* ══════════════════ SLIDE 6 — AI ANOMALY INTERPRETER ══════════════════ */
+    #s6 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s6 .ai-wrap {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 24px; width: 100%; max-width: 960px;
+    }
+    #s6 .ai-left { display: flex; flex-direction: column; gap: 14px; }
+    #s6 .ai-step {
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    #s6 .ai-num {
+      min-width: 32px; height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800;
+    }
+    #s6 .ai-step-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    #s6 .ai-step-desc  { font-size: 13px; color: var(--t2); line-height: 1.5; }
+    #s6 .ai-output {
+      background: rgba(0,0,0,.4);
+      border: 1px solid rgba(168,85,247,.25);
+      border-radius: 14px;
+      padding: 20px 22px;
+      font-size: 13px; line-height: 1.75;
+      color: var(--t2);
+    }
+    #s6 .ai-output .ai-hdr {
+      font-weight: 700; color: var(--purple);
+      font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    #s6 .ai-output p { margin-bottom: 8px; }
+    #s6 .ai-output strong { color: var(--t1); }
+    #s6 .cost-pill {
+      margin-top: 12px;
+      display: inline-flex; gap: 8px; align-items: center;
+      background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25);
+      border-radius: 20px; padding: 4px 14px;
+      font-size: 12px; color: var(--green);
+    }
+
+    /* ══════════════════ SLIDE 7 — NOTIFICATIONS / RESPONSES ══════════════════ */
+    #s7 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s7 .notif-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; width: 100%; max-width: 960px;
+    }
+    #s7 .notif-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px 22px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    #s7 .notif-header {
+      display: flex; align-items: center; gap: 12px;
+    }
+    #s7 .notif-icon { font-size: 32px; }
+    #s7 .notif-name { font-size: 1.1rem; font-weight: 800; }
+    #s7 .notif-sub  { font-size: 12px; color: var(--t3); }
+    #s7 .notif-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    #s7 .notif-list li {
+      font-size: 13px; color: var(--t2);
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    #s7 .notif-list li::before { content: '✓'; color: var(--green); font-weight: 700; margin-top: 1px; }
+
+    /* ══════════════════ SLIDE 8 — CLI DEMO ══════════════════ */
+    #s8 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s8 .cmd-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; width: 100%; max-width: 960px;
+    }
+    #s8 .cmd-group { display: flex; flex-direction: column; gap: 10px; }
+    #s8 .cmd-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--t3); margin-bottom: 2px;
+    }
+
+    /* ══════════════════ SLIDE 9 — WEB DASHBOARD ══════════════════ */
+    #s9 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s9 .dash-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 14px; width: 100%; max-width: 1000px;
+    }
+    #s9 .dash-page {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px;
+    }
+    #s9 .dash-page-icon { font-size: 24px; margin-bottom: 10px; }
+    #s9 .dash-page-name { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+    #s9 .dash-page-desc { font-size: 13px; color: var(--t2); line-height: 1.5; }
+    #s9 .stack-row {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      justify-content: center; margin-top: 20px;
+    }
+    #s9 .stack-pill {
+      background: rgba(99,102,241,.1); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 16px;
+      font-size: 13px; color: var(--accent2);
+    }
+
+    /* ══════════════════ SLIDE 10 — AWS LAMBDA ══════════════════ */
+    #s10 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s10 .lambda-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; width: 100%; max-width: 960px;
+    }
+    #s10 .lambda-col { display: flex; flex-direction: column; gap: 14px; }
+    #s10 .service-row {
+      display: flex; gap: 12px; align-items: center;
+    }
+    #s10 .svc-icon {
+      min-width: 42px; height: 42px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    #s10 .svc-name  { font-weight: 700; font-size: 14px; }
+    #s10 .svc-desc  { font-size: 12px; color: var(--t2); }
+
+    /* ══════════════════ SLIDE 11 — DEPLOY ══════════════════ */
+    #s11 h2 { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    #s11 .deploy-cols {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 24px; width: 100%; max-width: 960px;
+    }
+    #s11 .deploy-step {
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    #s11 .step-num {
+      min-width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+    }
+    #s11 .step-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    #s11 .step-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--accent2);
+      background: rgba(99,102,241,.08); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; margin-top: 8px;
+      line-height: 1.7;
+    }
+
+    /* ══════════════════ SLIDE 12 — CTA ══════════════════ */
+    #s12 h1 {
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      font-weight: 900; text-align: center; line-height: 1.15;
+      background: linear-gradient(135deg, #f1f5f9 0%, var(--accent2) 50%, var(--purple) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -.02em;
+    }
+    #s12 .cta-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 18px; width: 100%; max-width: 860px; margin-top: 36px;
+    }
+    #s12 .cta-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 22px 20px; text-align: center;
+    }
+    #s12 .cta-icon  { font-size: 30px; margin-bottom: 10px; }
+    #s12 .cta-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+    #s12 .cta-desc  { font-size: 13px; color: var(--t2); }
+    #s12 .built-by {
+      margin-top: 40px; font-size: 12px; color: var(--t3);
+      letter-spacing: .1em; text-transform: uppercase;
+    }
+
+    /* slide header shared */
+    .slide-header { text-align: center; margin-bottom: 32px; }
+    .slide-header p { color: var(--t2); font-size: 1rem; margin-top: 8px; max-width: 640px; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<div id="slide-badge">1 / 12</div>
+<div id="hint">← → arrow keys to navigate</div>
+
+<div id="deck">
+
+  <!-- ══ 1 — HERO ══ -->
+  <section class="slide active" id="s1">
+    <div class="hero-logo">Jaja Finance · Internal Tooling</div>
+    <h1>DD Log Analyzer</h1>
+    <p class="subtitle">
+      Intelligent Datadog log analysis with <strong>pattern detection</strong>,
+      <strong>anomaly surfacing</strong>, <strong>AI-powered incident reports</strong>,
+      and automated Slack &amp; Jira alerting — across three deployment modes.
+    </p>
+    <div class="pill-row">
+      <span class="tag tag-accent">Pattern Detection</span>
+      <span class="tag tag-purple">AI Anomaly Analysis</span>
+      <span class="tag tag-cyan">Real-time Monitoring</span>
+      <span class="tag tag-green">Slack &amp; Jira Alerts</span>
+      <span class="tag tag-orange">AWS Lambda Ready</span>
+    </div>
+    <div class="date-line">Demo · February 27, 2026</div>
+  </section>
+
+  <!-- ══ 2 — PROBLEM ══ -->
+  <section class="slide" id="s2">
+    <div class="slide-header">
+      <span class="tag tag-red">The Problem</span>
+      <h2 style="margin-top:12px;">Log analysis is still painful</h2>
+      <p>Teams waste hours manually scanning dashboards. Issues surface too late. Noise drowns signal.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-item card">
+        <div class="p-icon" style="background:rgba(239,68,68,.1);">🔇</div>
+        <div>
+          <div class="p-title">Signal buried in noise</div>
+          <div class="p-desc">Thousands of log lines make it impossible to spot real anomalies without manual filtering.</div>
+        </div>
+      </div>
+      <div class="problem-item card">
+        <div class="p-icon" style="background:rgba(245,158,11,.1);">⏱️</div>
+        <div>
+          <div class="p-title">Late detection</div>
+          <div class="p-desc">By the time engineers notice an error pattern, it has already impacted users at scale.</div>
+        </div>
+      </div>
+      <div class="problem-item card">
+        <div class="p-icon" style="background:rgba(168,85,247,.1);">🔗</div>
+        <div>
+          <div class="p-title">Cross-service blind spots</div>
+          <div class="p-desc">Errors cascade across microservices. Correlating root causes requires jumping between tools.</div>
+        </div>
+      </div>
+      <div class="problem-item card">
+        <div class="p-icon" style="background:rgba(6,182,212,.1);">🧠</div>
+        <div>
+          <div class="p-title">No actionable context</div>
+          <div class="p-desc">Raw logs don't explain impact or remediation steps — engineers start from scratch every incident.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 3 — FEATURES ══ -->
+  <section class="slide" id="s3">
+    <div class="slide-header">
+      <span class="tag tag-accent">Core Capabilities</span>
+      <h2 style="margin-top:12px;">Everything in one engine</h2>
+      <p>A unified analysis pipeline shared across CLI, Web, and Lambda — no duplication.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-icon">🔍</div>
+        <div class="feat-title">Pattern Detection</div>
+        <div class="feat-desc">Tokenize &amp; fingerprint log messages. Cluster similar errors into groups to instantly see what's recurring.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📈</div>
+        <div class="feat-title">Anomaly Detection</div>
+        <div class="feat-desc">Z-score volume spikes, error bursts, and frequency shifts. Statistical alerting — no threshold guessing.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔗</div>
+        <div class="feat-title">Error Correlation</div>
+        <div class="feat-desc">Group errors by fingerprint, track cross-service propagation, and identify root-cause services automatically.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📉</div>
+        <div class="feat-title">Trend Analysis</div>
+        <div class="feat-desc">Rolling averages, linear regression, and baseline comparison. Know whether things are getting better or worse.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🤖</div>
+        <div class="feat-title">AI Anomaly Interpreter</div>
+        <div class="feat-desc">AWS Bedrock (Claude 3 Haiku) reads actual error logs and produces DevOps-grade incident descriptions.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🏥</div>
+        <div class="feat-title">Maintenance API Check</div>
+        <div class="feat-desc">Polls service health endpoints each cycle and correlates unhealthy services directly with Datadog log anomalies.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 4 — ARCHITECTURE / 3 MODES ══ -->
+  <section class="slide" id="s4">
+    <div class="slide-header">
+      <span class="tag tag-cyan">Architecture</span>
+      <h2 style="margin-top:12px;">Three deployment modes, one engine</h2>
+      <p>All modes share the same analysis engine, query presets, and config format.</p>
+    </div>
+    <div class="arch-row">
+      <div class="arch-card">
+        <div class="arch-badge" style="background:rgba(6,182,212,.12);color:var(--cyan);border:1px solid rgba(6,182,212,.25);">Option A</div>
+        <div class="arch-title">Local CLI</div>
+        <div class="arch-desc">Ad-hoc investigation with rich terminal output. Install once, run anywhere with <code>dd-logs</code>.</div>
+        <ul class="arch-list">
+          <li>Rich terminal panels &amp; tables</li>
+          <li>Instant query &amp; analysis</li>
+          <li>HTML / JSON report export</li>
+          <li>SQLite dedup for alerts</li>
+          <li>No server required</li>
+        </ul>
+      </div>
+      <div class="arch-card" style="border-color:rgba(99,102,241,.3); box-shadow: 0 0 28px rgba(99,102,241,.1);">
+        <div class="arch-badge" style="background:rgba(99,102,241,.15);color:var(--accent2);border:1px solid rgba(99,102,241,.3);">Option B</div>
+        <div class="arch-title">Web Dashboard</div>
+        <div class="arch-desc">Dark-themed local UI. FastAPI backend + Vite frontend. JWT auth. Live Datadog log viewer.</div>
+        <ul class="arch-list">
+          <li>Dashboard · Anomaly history</li>
+          <li>Live log viewer with presets</li>
+          <li>Per-service severity tabs</li>
+          <li>Settings &amp; preset manager</li>
+          <li>SQLite anomaly persistence</li>
+        </ul>
+      </div>
+      <div class="arch-card" style="border-color:rgba(168,85,247,.25);">
+        <div class="arch-badge" style="background:rgba(168,85,247,.12);color:var(--purple);border:1px solid rgba(168,85,247,.3);">Option C</div>
+        <div class="arch-title">AWS Lambda</div>
+        <div class="arch-desc">24/7 automated — no laptop needed. Triggered every 5 minutes by EventBridge. Fully managed infra via Terraform.</div>
+        <ul class="arch-list">
+          <li>EventBridge 5-min schedule</li>
+          <li>DynamoDB dedup (cooldown)</li>
+          <li>S3 HTML/JSON reports</li>
+          <li>Bedrock AI descriptions</li>
+          <li>Secrets Manager + SSM config</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 5 — TWO-TIER ENGINE ══ -->
+  <section class="slide" id="s5">
+    <div class="slide-header">
+      <span class="tag tag-orange">Analysis Engine</span>
+      <h2 style="margin-top:12px;">Two-tier log analysis</h2>
+      <p>Breadth + depth — aggregate coverage meets sampled deep-dive analysis.</p>
+    </div>
+    <div class="engine-wrap">
+      <div class="tier" style="border-color:rgba(6,182,212,.3);">
+        <div class="tier-label" style="color:var(--cyan);">Tier 1 · Server-side</div>
+        <div class="tier-title">Aggregation</div>
+        <ul class="tier-dot-list">
+          <li style="--c:var(--cyan);">Covers <strong>ALL logs</strong> — no sampling</li>
+          <li>Datadog metrics aggregation API</li>
+          <li>Volume, error rate, service breakdown</li>
+          <li>Fast — handles massive datasets</li>
+          <li>Produces trend &amp; volume signals</li>
+        </ul>
+      </div>
+      <div class="arrow-box">
+        <div class="flow-right">⊕</div>
+        <div style="font-size:12px;color:var(--t3);">merged</div>
+      </div>
+      <div class="tier" style="border-color:rgba(168,85,247,.3);">
+        <div class="tier-label" style="color:var(--purple);">Tier 2 · Targeted</div>
+        <div class="tier-title">Deep Analysis</div>
+        <ul class="tier-dot-list">
+          <li>Sampled log content analysis</li>
+          <li>Fingerprint clustering &amp; patterns</li>
+          <li>Anomaly Z-score + burst detection</li>
+          <li>Cross-service error correlation</li>
+          <li>Raw log context for AI interpreter</li>
+        </ul>
+      </div>
+    </div>
+    <div class="merge-box">
+      <div class="merge-icon">🎯</div>
+      <div class="merge-text">
+        <strong>Combined result:</strong> Tier 1 gives population-level statistics across every log line. Tier 2 provides semantic understanding of <em>what</em> is failing and <em>why</em>. Together they produce accurate anomaly scores with actionable root-cause context — eliminating both false positives and blind spots.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 6 — AI INTERPRETER ══ -->
+  <section class="slide" id="s6">
+    <div class="slide-header">
+      <span class="tag tag-purple">AI-Powered</span>
+      <h2 style="margin-top:12px;">AI Anomaly Interpreter</h2>
+      <p>AWS Bedrock · Claude 3 Haiku — turns raw error logs into DevOps incident briefs.</p>
+    </div>
+    <div class="ai-wrap">
+      <div class="ai-left">
+        <div class="ai-step">
+          <div class="ai-num">1</div>
+          <div>
+            <div class="ai-step-title">Anomaly detected</div>
+            <div class="ai-step-desc">Analysis engine surfaces a Z-score spike or error-burst pattern across one or more services.</div>
+          </div>
+        </div>
+        <div class="ai-step">
+          <div class="ai-num">2</div>
+          <div>
+            <div class="ai-step-title">All error logs sent to Bedrock</div>
+            <div class="ai-step-desc">The actual raw error-level log messages from the anomaly window are passed to Claude 3 Haiku.</div>
+          </div>
+        </div>
+        <div class="ai-step">
+          <div class="ai-num">3</div>
+          <div>
+            <div class="ai-step-title">DevOps-grade brief generated</div>
+            <div class="ai-step-desc">AI produces a structured incident description covering what failed, root cause hypothesis, impact, and investigation steps.</div>
+          </div>
+        </div>
+        <div class="ai-step">
+          <div class="ai-num">4</div>
+          <div>
+            <div class="ai-step-title">Attached to Slack &amp; Jira</div>
+            <div class="ai-step-desc">AI description is embedded in Slack Block Kit messages and Jira ticket bodies. Graceful fallback if Bedrock unavailable.</div>
+          </div>
+        </div>
+        <div class="cost-pill">
+          <span>💰</span> ~$0.0001 per anomaly · ~$0.25 / M input tokens
+        </div>
+      </div>
+      <div class="ai-output">
+        <div class="ai-hdr">🤖 Sample AI Output · Claude 3 Haiku</div>
+        <p><strong>What is failing:</strong> <code>aggregatoradapter</code> is returning connection timeout errors to downstream consumers at 3× baseline rate. Pattern: <code>Failed to connect: read timeout after 30s</code></p>
+        <p><strong>Root cause hypothesis:</strong> The upstream <code>corecustomeragreement</code> service appears degraded — 80% of errors originate within 200ms of its API calls, suggesting database or network saturation.</p>
+        <p><strong>Impact:</strong> ~340 affected requests in the last 15 minutes. Customer agreement fetches failing silently in 4 downstream services.</p>
+        <p><strong>Investigation:</strong> Check <code>kubectl top pods -n prod</code> for <code>corecustomeragreement</code>. Review Datadog APM traces for DB slow queries. Verify RDS connection pool limits.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 7 — NOTIFICATIONS ══ -->
+  <section class="slide" id="s7">
+    <div class="slide-header">
+      <span class="tag tag-green">Integrations</span>
+      <h2 style="margin-top:12px;">Automated alerting &amp; response</h2>
+      <p>Anomalies don't just get logged — they trigger the right people with the right context.</p>
+    </div>
+    <div class="notif-grid">
+      <div class="notif-card" style="border-color:rgba(34,197,94,.2);">
+        <div class="notif-header">
+          <div class="notif-icon">💬</div>
+          <div>
+            <div class="notif-name">Slack</div>
+            <div class="notif-sub">Block Kit formatted alerts with Datadog deep-links</div>
+          </div>
+        </div>
+        <ul class="notif-list">
+          <li>Rich Block Kit message layout</li>
+          <li>Severity colour-coded headers</li>
+          <li>Direct Datadog log deep-links</li>
+          <li>AI incident description embedded</li>
+          <li>Channel override per-alert</li>
+          <li>Cooldown dedup — no spam</li>
+        </ul>
+      </div>
+      <div class="notif-card" style="border-color:rgba(6,182,212,.2);">
+        <div class="notif-header">
+          <div class="notif-icon">🎫</div>
+          <div>
+            <div class="notif-name">Jira</div>
+            <div class="notif-sub">Auto-created tickets via REST API</div>
+          </div>
+        </div>
+        <ul class="notif-list">
+          <li>Severity → priority mapping (P1–P4)</li>
+          <li>Per-service assignee config</li>
+          <li>Fingerprint-based deduplication</li>
+          <li>AI description in ticket body</li>
+          <li>Configurable project key &amp; issue type</li>
+          <li>DynamoDB cooldown (Lambda mode)</li>
+        </ul>
+      </div>
+      <div class="notif-card" style="border-color:rgba(245,158,11,.2);">
+        <div class="notif-header">
+          <div class="notif-icon">📊</div>
+          <div>
+            <div class="notif-name">HTML Reports</div>
+            <div class="notif-sub">Standalone Chart.js visualizations</div>
+          </div>
+        </div>
+        <ul class="notif-list">
+          <li>Self-contained HTML file — no server needed</li>
+          <li>Chart.js time-series &amp; bar charts</li>
+          <li>Error distribution breakdown</li>
+          <li>S3 upload + pre-signed URL sharing</li>
+          <li>30-day lifecycle on S3</li>
+        </ul>
+      </div>
+      <div class="notif-card" style="border-color:rgba(168,85,247,.2);">
+        <div class="notif-header">
+          <div class="notif-icon">🏥</div>
+          <div>
+            <div class="notif-name">Maintenance API</div>
+            <div class="notif-sub">Service health correlation</div>
+          </div>
+        </div>
+        <ul class="notif-list">
+          <li>Polls health endpoints every cycle</li>
+          <li>Correlates unhealthy services with log anomalies</li>
+          <li>Kong attribution — identifies gateway root cause</li>
+          <li>Remediation steps surfaced in Slack</li>
+          <li>Custom URL per environment</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 8 — CLI DEMO ══ -->
+  <section class="slide" id="s8">
+    <div class="slide-header">
+      <span class="tag tag-cyan">Option A · CLI</span>
+      <h2 style="margin-top:12px;">Local CLI reference</h2>
+      <p>Six commands covering every workflow — from quick queries to 24/7 watching.</p>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-group">
+        <div class="cmd-label">🔌 Health check</div>
+        <div class="code-block"><span class="kw">dd-logs</span> health</div>
+
+        <div class="cmd-label">🔎 Query logs</div>
+        <div class="code-block"><span class="kw">dd-logs</span> query <span class="str">"env:prod status:error"</span> <span class="flag">-t</span> <span class="str">"last 30m"</span> <span class="flag">-l</span> 200
+
+<span class="kw">dd-logs</span> query <span class="flag">--preset</span> kong-errors <span class="flag">-t</span> <span class="str">"last 6h"</span></div>
+
+        <div class="cmd-label">📊 Generate report</div>
+        <div class="code-block"><span class="kw">dd-logs</span> report <span class="str">"env:prod"</span> <span class="flag">-t</span> <span class="str">"last 24h"</span> \
+         <span class="flag">--output</span> daily.html</div>
+      </div>
+      <div class="cmd-group">
+        <div class="cmd-label">🧪 Analyze (full pipeline)</div>
+        <div class="code-block"><span class="kw">dd-logs</span> analyze <span class="str">"env:prod"</span> <span class="flag">-t</span> <span class="str">"last 1h"</span> \
+         <span class="flag">--notify-slack</span> <span class="flag">--create-jira</span>
+
+<span class="kw">dd-logs</span> analyze <span class="flag">--preset</span> api-5xx \
+         <span class="flag">-f</span> html <span class="flag">-o</span> report.html <span class="flag">--notify-slack</span></div>
+
+        <div class="cmd-label">🔭 Continuous watch</div>
+        <div class="code-block"><span class="kw">dd-logs</span> watch <span class="flag">--all-services</span> \
+         <span class="flag">--interval</span> 300
+
+<span class="kw">dd-logs</span> watch <span class="str">"service:konggateway"</span> \
+         <span class="flag">-i</span> 60 <span class="flag">--no-jira</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 9 — WEB DASHBOARD ══ -->
+  <section class="slide" id="s9">
+    <div class="slide-header">
+      <span class="tag tag-accent">Option B · Web</span>
+      <h2 style="margin-top:12px;">Local web dashboard</h2>
+      <p>Dark-themed UI — FastAPI backend + Vite frontend + JWT auth. Run <code>dd-logs-web</code> to start.</p>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-page">
+        <div class="dash-page-icon">📊</div>
+        <div class="dash-page-name">Dashboard</div>
+        <div class="dash-page-desc">24h anomaly stats, service health grid, active presets, on-demand analysis launcher.</div>
+      </div>
+      <div class="dash-page">
+        <div class="dash-page-icon">🚨</div>
+        <div class="dash-page-name">Anomalies</div>
+        <div class="dash-page-desc">Paginated history table — filter by service, severity, or time range. Populated by <code>dd-logs watch</code>.</div>
+      </div>
+      <div class="dash-page">
+        <div class="dash-page-icon">📋</div>
+        <div class="dash-page-name">Log Viewer</div>
+        <div class="dash-page-desc">Live Datadog log search with preset dropdown, time range selector, and adjustable limit.</div>
+      </div>
+      <div class="dash-page">
+        <div class="dash-page-icon">⚙️</div>
+        <div class="dash-page-name">Settings</div>
+        <div class="dash-page-desc">Add, edit, and delete query presets. Tune analysis thresholds. Toggle Slack/Jira per-session.</div>
+      </div>
+      <div class="dash-page">
+        <div class="dash-page-icon">🔬</div>
+        <div class="dash-page-name">Service Detail</div>
+        <div class="dash-page-desc">Click any service → live Datadog logs with Error/Warning/Info/Debug severity tabs + auto-refresh.</div>
+      </div>
+      <div class="dash-page" style="background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.25);">
+        <div class="dash-page-icon">🔐</div>
+        <div class="dash-page-name">Auth · JWT</div>
+        <div class="dash-page-desc">HMAC-SHA256 JWT tokens. Configurable username/password via env vars. <code>WEB_SECRET_KEY</code> signing.</div>
+      </div>
+    </div>
+    <div class="stack-row">
+      <span class="stack-pill">FastAPI</span>
+      <span class="stack-pill">Vite + Vanilla JS</span>
+      <span class="stack-pill">SQLite</span>
+      <span class="stack-pill">JWT Auth</span>
+      <span class="stack-pill">Dark Theme</span>
+      <span class="stack-pill">Chart.js</span>
+    </div>
+  </section>
+
+  <!-- ══ 10 — AWS LAMBDA ══ -->
+  <section class="slide" id="s10">
+    <div class="slide-header">
+      <span class="tag tag-purple">Option C · Lambda</span>
+      <h2 style="margin-top:12px;">24/7 automated on AWS</h2>
+      <p>Fully managed infrastructure via Terraform. No laptop needed. Fires every 5 minutes.</p>
+    </div>
+    <div class="lambda-grid">
+      <div class="lambda-col">
+        <div class="card" style="padding:16px 20px;">
+          <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:12px;">AWS Services</div>
+          <div class="service-row" style="margin-bottom:12px;">
+            <div class="svc-icon" style="background:rgba(245,158,11,.1);">⚡</div>
+            <div><div class="svc-name">Lambda (Python 3.11)</div><div class="svc-desc">512 MB · 5-min timeout · all-services discovery</div></div>
+          </div>
+          <div class="service-row" style="margin-bottom:12px;">
+            <div class="svc-icon" style="background:rgba(6,182,212,.1);">🕐</div>
+            <div><div class="svc-name">EventBridge</div><div class="svc-desc">rate(5 minutes) schedule rule</div></div>
+          </div>
+          <div class="service-row" style="margin-bottom:12px;">
+            <div class="svc-icon" style="background:rgba(168,85,247,.1);">🗄️</div>
+            <div><div class="svc-name">DynamoDB</div><div class="svc-desc">Alert dedup · TTL cooldown · on-demand billing</div></div>
+          </div>
+          <div class="service-row" style="margin-bottom:12px;">
+            <div class="svc-icon" style="background:rgba(34,197,94,.1);">🪣</div>
+            <div><div class="svc-name">S3</div><div class="svc-desc">HTML/JSON reports · 30d lifecycle · prevent_destroy</div></div>
+          </div>
+          <div class="service-row" style="margin-bottom:12px;">
+            <div class="svc-icon" style="background:rgba(99,102,241,.1);">🤖</div>
+            <div><div class="svc-name">Bedrock · Claude 3 Haiku</div><div class="svc-desc">AI incident descriptions from real error logs</div></div>
+          </div>
+          <div class="service-row">
+            <div class="svc-icon" style="background:rgba(239,68,68,.1);">🔐</div>
+            <div><div class="svc-name">Secrets Manager + SSM</div><div class="svc-desc">API keys · YAML config · no code redeploy for changes</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="lambda-col">
+        <div class="code-block" style="font-size:12px;line-height:1.85;">
+<span class="dim"># Terraform resource summary</span>
+
+<span class="kw">Lambda</span>     Python 3.11 · 512 MB · 5m timeout
+<span class="kw">IAM</span>        DynamoDB + S3 + SSM + Bedrock + Secrets
+
+<span class="kw">EventBridge</span>  rate(5 minutes) → Lambda invoke
+<span class="kw">DynamoDB</span>    alert_state  PK: fingerprint  TTL: ttl_expiry
+<span class="kw">S3</span>          reports bucket  enc+lifecycle+prevent_destroy
+
+<span class="dim"># Config changes = zero redeploy</span>
+aws ssm put-parameter \
+  <span class="flag">--name</span> /dd-log-analyzer/config \
+  <span class="flag">--value</span> <span class="str">"$(cat config/default.yaml)"</span> \
+  <span class="flag">--overwrite</span>
+
+<span class="dim"># Takes effect within 5 minutes ✓</span></div>
+        <div class="card" style="margin-top:14px;padding:14px 18px;">
+          <div style="font-size:12px;color:var(--t2);line-height:1.7;">
+            <strong style="color:var(--t1);">Region:</strong> eu-west-2 &nbsp;·&nbsp;
+            <strong style="color:var(--t1);">State backend:</strong> S3<br/>
+            <strong style="color:var(--t1);">Dedup window:</strong> configurable cooldown minutes<br/>
+            <strong style="color:var(--t1);">Bedrock cost:</strong> ~$0.0001 / anomaly (graceful fallback)
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 11 — QUICK DEPLOY ══ -->
+  <section class="slide" id="s11">
+    <div class="slide-header">
+      <span class="tag tag-green">Getting Started</span>
+      <h2 style="margin-top:12px;">Up and running in minutes</h2>
+      <p>Three paths — pick your mode and go.</p>
+    </div>
+    <div class="deploy-cols">
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <div style="font-size:13px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;">CLI (Local)</div>
+        <div class="deploy-step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Install</div>
+            <div class="step-code">pip install -e .</div>
+          </div>
+        </div>
+        <div class="deploy-step">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">Configure</div>
+            <div class="step-code">cp .env.example .env
+# Add DD_API_KEY, DD_APP_KEY,
+# SLACK_WEBHOOK_URL, JIRA creds</div>
+          </div>
+        </div>
+        <div class="deploy-step">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Run</div>
+            <div class="step-code">dd-logs health
+dd-logs analyze "env:prod" -t "last 1h"
+dd-logs watch --all-services</div>
+          </div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.1em;margin-top:6px;">Web Dashboard</div>
+        <div class="deploy-step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Install + run</div>
+            <div class="step-code">pip install -e ".[web]"
+cd webapp/frontend && npm install
+# Terminal 1:
+dd-logs-web
+# Terminal 2:
+npm run dev  # → http://localhost:5173</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <div style="font-size:13px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.1em;">AWS Lambda (24/7)</div>
+        <div class="deploy-step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Store secrets</div>
+            <div class="step-code">aws secretsmanager create-secret \
+  --name dd-log-analyzer/secrets \
+  --secret-string '{
+    "DD_API_KEY": "...",
+    "DD_APP_KEY": "...",
+    "SLACK_WEBHOOK_URL": "..."
+  }'</div>
+          </div>
+        </div>
+        <div class="deploy-step">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">Store YAML config</div>
+            <div class="step-code">aws ssm put-parameter \
+  --name /dd-log-analyzer/config \
+  --value "$(cat config/default.yaml)"</div>
+          </div>
+        </div>
+        <div class="deploy-step">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Build &amp; deploy</div>
+            <div class="step-code">bash scripts/package.sh
+cd infra
+terraform init -backend-config="bucket=..."
+terraform apply</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 12 — CTA ══ -->
+  <section class="slide" id="s12">
+    <h1>Zero incidents.<br/>Maximum visibility.</h1>
+    <p style="color:var(--t2);margin-top:20px;font-size:1.05rem;text-align:center;max-width:600px;line-height:1.6;">
+      DD Log Analyzer brings together pattern detection, statistical anomaly scoring, AI incident briefs, and automated alerting into a single deployable toolchain.
+    </p>
+    <div class="cta-grid">
+      <div class="cta-item">
+        <div class="cta-icon">⚡</div>
+        <div class="cta-title">CLI — instant</div>
+        <div class="cta-desc"><code>pip install -e .</code><br/>Start analyzing in 2 minutes</div>
+      </div>
+      <div class="cta-item" style="border-color:rgba(99,102,241,.3);box-shadow:0 0 24px rgba(99,102,241,.1);">
+        <div class="cta-icon">🖥️</div>
+        <div class="cta-title">Web — today</div>
+        <div class="cta-desc"><code>dd-logs-web</code><br/>Live dashboard at <code>:5173</code></div>
+      </div>
+      <div class="cta-item">
+        <div class="cta-icon">☁️</div>
+        <div class="cta-title">Lambda — always on</div>
+        <div class="cta-desc"><code>terraform apply</code><br/>5-min automated monitoring</div>
+      </div>
+    </div>
+    <div class="built-by">Built by Jalil Abdollahi · Jaja Finance · 2026</div>
+  </section>
+
+</div><!-- /deck -->
+
+<div id="controls">
+  <button id="btn-prev">← Prev</button>
+  <span id="slide-counter">1 / 12</span>
+  <button id="btn-next">Next →</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total  = slides.length;
+  let current  = 0;
+
+  const bar    = document.getElementById('progress-bar');
+  const badge  = document.getElementById('slide-badge');
+  const counter= document.getElementById('slide-counter');
+
+  function goTo(idx, direction = 1) {
+    if (idx < 0 || idx >= total) return;
+
+    const prev = slides[current];
+    prev.classList.remove('active');
+    prev.classList.add(direction >= 0 ? 'exit-left' : 'exit-right');
+    setTimeout(() => prev.classList.remove('exit-left', 'exit-right'), 500);
+
+    current = idx;
+    const next = slides[current];
+    next.style.transform = direction >= 0 ? 'translateX(60px)' : 'translateX(-60px)';
+    next.style.opacity = '0';
+    // force reflow
+    void next.offsetHeight;
+    next.style.transform = '';
+    next.style.opacity   = '';
+    next.classList.add('active');
+
+    const pct = ((current + 1) / total * 100).toFixed(1);
+    bar.style.width = pct + '%';
+    badge.textContent   = `${current + 1} / ${total}`;
+    counter.textContent = `${current + 1} / ${total}`;
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', () => goTo(current - 1, -1));
+  document.getElementById('btn-next').addEventListener('click', () => goTo(current + 1,  1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ')  goTo(current + 1,  1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                      goTo(current - 1, -1);
+  });
+
+  // touch / swipe
+  let touchX = null;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) goTo(current + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+    touchX = null;
+  });
+
+  // init progress bar
+  bar.style.width = ((1 / total) * 100).toFixed(1) + '%';
+</script>
+</body>
+</html>

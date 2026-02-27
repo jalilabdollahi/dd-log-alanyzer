@@ -1,0 +1,16 @@
+apiVersion: v2
+name: dd-log-analyzer
+description: Datadog Log Analyzer — web dashboard with live monitoring
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - datadog
+  - log-analyzer
+  - monitoring
+  - observability
+maintainers:
+  - name: Jalil Abdollahi
+home: https://github.com/dd-log/dd-loganalyzer
+sources:
+  - https://github.com/dd-log/dd-loganalyzer
