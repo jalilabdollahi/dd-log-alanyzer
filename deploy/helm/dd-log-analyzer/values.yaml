@@ -1,0 +1,136 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# dd-log-analyzer — Helm Values
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Global ────────────────────────────────────────────────────────────────
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Images ────────────────────────────────────────────────────────────────
+backend:
+  image:
+    repository: ghcr.io/dd-log/dd-log-analyzer-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  port: 8000
+
+frontend:
+  image:
+    repository: ghcr.io/dd-log/dd-log-analyzer-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  port: 80
+
+watcher:
+  image:
+    repository: ghcr.io/dd-log/dd-log-analyzer-watcher
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # Watcher configuration
+  interval: 60
+  allServices: true
+  slack: false
+  jira: false
+
+# ── Ingress ───────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: dd-logs.example.com
+  tls:
+    enabled: false
+    secretName: dd-log-analyzer-tls
+
+# ── Persistence (SQLite) ─────────────────────────────────────────────────
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
+
+# ── Secrets ───────────────────────────────────────────────────────────────
+# Provide these values or reference an existing secret
+secrets:
+  # Set to an existing secret name to use pre-created secrets
+  existingSecret: ""
+  # Only used when existingSecret is empty
+  datadogApiKey: ""
+  datadogAppKey: ""
+  datadogSite: "datadoghq.com"
+  webUsername: "admin"
+  webPassword: "changeme"
+  webSecretKey: "change-this-to-a-random-secret"
+  slackWebhookUrl: ""
+  jiraBaseUrl: ""
+  jiraEmail: ""
+  jiraApiToken: ""
+
+# ── Config ────────────────────────────────────────────────────────────────
+# Inline YAML config (mounted as ConfigMap)
+config:
+  defaultYaml: |
+    scope:
+      env: prod
+    datadog:
+      site: datadoghq.eu
+      log_index: main
+      max_results: 5000
+      cache_ttl: 300
+    analysis:
+      anomaly_zscore_threshold: 2.5
+      burst_window_seconds: 120
+      burst_min_count: 50
+      trend_bucket_minutes: 5
+      top_patterns: 20
+      sample_size: 5000
+    alerts:
+      cooldown_minutes: 15
+      severity_threshold: warning
+    slack:
+      enabled: true
+    jira:
+      enabled: true
+      project_key: OPS
+      issue_type: Bug
+      auto_create: true
+      severity_mapping:
+        critical: Highest
+        warning: High
+        info: Medium
+
+# ── Image Pull Secrets ────────────────────────────────────────────────────
+imagePullSecrets: []
+  # - name: ghcr-pull-secret
+
+# ── Service Account ──────────────────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+    # eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/dd-log-analyzer

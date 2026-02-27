@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+*.egg
+
+# Node
+webapp/frontend/node_modules/
+
+# Environment and secrets
+.env
+deploy/docker/.env
+
+# Data
+data/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform state
+*.tfstate
+*.tfstate.backup
+.terraform/
+scripts/terraform.tfstate
+
+# pytest
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage

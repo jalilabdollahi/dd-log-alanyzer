@@ -1,0 +1,30 @@
+──────────────────────────────────────────────────────────
+  dd-log-analyzer has been deployed!
+──────────────────────────────────────────────────────────
+
+Components:
+  ✓ Backend  (FastAPI)    — {{ include "dd-log-analyzer.fullname" . }}-backend
+  ✓ Frontend (Nginx)      — {{ include "dd-log-analyzer.fullname" . }}-frontend
+  ✓ Watcher  (monitoring) — {{ include "dd-log-analyzer.fullname" . }}-watcher
+
+{{- if .Values.ingress.enabled }}
+
+Dashboard URL:
+  {{- if .Values.ingress.tls.enabled }}
+  https://{{ .Values.ingress.host }}
+  {{- else }}
+  http://{{ .Values.ingress.host }}
+  {{- end }}
+{{- else }}
+
+Port-forward to access the dashboard locally:
+  kubectl port-forward svc/{{ include "dd-log-analyzer.fullname" . }}-frontend 8080:80 -n {{ .Release.Namespace }}
+  Then open: http://localhost:8080
+{{- end }}
+
+Default credentials:
+  Username: {{ .Values.secrets.webUsername }}
+  Password: (set in your values.yaml or secret)
+
+Check pod status:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}

@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dd-log-analyzer.fullname" . }}-watcher
+  labels:
+    {{- include "dd-log-analyzer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: watcher
+spec:
+  replicas: {{ .Values.watcher.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "dd-log-analyzer.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: watcher
+  template:
+    metadata:
+      labels:
+        {{- include "dd-log-analyzer.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: watcher
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "dd-log-analyzer.serviceAccountName" . }}
+      containers:
+        - name: watcher
+          image: "{{ .Values.watcher.image.repository }}:{{ .Values.watcher.image.tag }}"
+          imagePullPolicy: {{ .Values.watcher.image.pullPolicy }}
+          env:
+            - name: DB_PATH
+              value: /app/data/anomaly_history.db
+            - name: CONFIG_PATH
+              value: /app/config/default.yaml
+            - name: WATCH_INTERVAL
+              value: {{ .Values.watcher.interval | quote }}
+            - name: WATCH_ALL_SERVICES
+              value: {{ .Values.watcher.allServices | quote }}
+            - name: WATCH_SLACK
+              value: {{ .Values.watcher.slack | quote }}
+            - name: WATCH_JIRA
+              value: {{ .Values.watcher.jira | quote }}
+          envFrom:
+            - secretRef:
+                name: {{ include "dd-log-analyzer.secretName" . }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: config
+              mountPath: /app/config
+          resources:
+            {{- toYaml .Values.watcher.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "dd-log-analyzer.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "dd-log-analyzer.fullname" . }}-config
+            items:
+              - key: default.yaml
+                path: default.yaml

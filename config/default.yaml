@@ -1,0 +1,91 @@
+# =============================================================================
+# Datadog Log Analyzer — Default Configuration
+# =============================================================================
+# Queries are fully configurable. Add, remove, or edit presets anytime.
+# Changes take effect on the next run — no restart needed.
+
+# ---------------------------------------------------------------------------
+# Global scope — automatically prepended to ALL queries
+# ---------------------------------------------------------------------------
+scope:
+  env: local                          # default environment filter
+  # services: []                      # leave empty or comment out = all services
+
+# ---------------------------------------------------------------------------
+# Datadog settings
+# ---------------------------------------------------------------------------
+datadog:
+  site: datadoghq.eu                  # or datadoghq.com, us3.datadoghq.com, etc.
+  log_index: main                     # log index to query
+  max_results: 5000                   # max log entries per query
+  cache_ttl: 300                      # response cache TTL in seconds
+
+# ---------------------------------------------------------------------------
+# Analysis thresholds
+# ---------------------------------------------------------------------------
+analysis:
+  anomaly_zscore_threshold: 1.5       # Z-score threshold (lowered for demo; prod: 2.5)
+  burst_window_seconds: 120           # time window for burst detection
+  burst_min_count: 5                  # minimum errors to qualify as a burst (lowered for demo; prod: 50)
+  trend_bucket_minutes: 5             # time bucket size for trend analysis
+  top_patterns: 20                    # number of top patterns to report
+  sample_size: 5000                   # logs to sample for pattern detection
+
+# ---------------------------------------------------------------------------
+# Alert settings
+# ---------------------------------------------------------------------------
+alerts:
+  cooldown_minutes: 15                # dedup cooldown — same alert won't re-fire
+  severity_threshold: warning         # minimum severity to trigger alerts (info/warning/critical)
+
+# ---------------------------------------------------------------------------
+# Slack notifications
+# ---------------------------------------------------------------------------
+slack:
+  enabled: true
+  # channel: "#ops-alerts"            # override channel (optional)
+
+# ---------------------------------------------------------------------------
+# Jira integration
+# ---------------------------------------------------------------------------
+jira:
+  enabled: true
+  project_key: OPS                    # Jira project for tickets
+  issue_type: Bug                     # Bug, Incident, Task, Story
+  auto_create: true                   # set false to disable auto-creation
+  severity_mapping:
+    critical: Highest
+    warning: High
+    info: Medium
+  # assignees:                        # optional per-service assignment
+  #   api-gateway: john.doe
+  #   auth-service: jane.smith
+
+# ---------------------------------------------------------------------------
+# Saved query presets — add your own, use with: dd-logs analyze --preset <name>
+# ---------------------------------------------------------------------------
+presets:
+  kong-errors:
+    query: 'env:prod -status:(warn OR info OR debug) @msg:"failed to fetch KongPlugin resource"'
+    services: [aggregatoradapter]
+    description: "KongPlugin fetch failures in aggregatoradapter"
+
+  api-5xx:
+    query: "service:api-gateway @http.status_code:>=500"
+    description: "5xx errors on the API gateway"
+
+  auth-failures:
+    query: "env:prod service:auth-service @action:login @outcome:failure"
+    description: "Failed login attempts in prod"
+
+  aggregator-errors:
+    query: "env:prod service:aggregatoradapter -status:(warn OR info OR debug)"
+    description: "aggregatoradapter errors in prod (exclude warnings and info and debug logs)"
+
+  high-latency:
+    query: "env:prod @duration:>5000000000"
+    description: "Requests taking longer than 5 seconds"
+
+  api-gateway-errors:
+    query: "service:api-gateway env:local "
+    description: "5xx errors on the API gateway"

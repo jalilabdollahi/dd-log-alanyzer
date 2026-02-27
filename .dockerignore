@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node artifacts
+webapp/frontend/node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment and data
+.env
+data/
+*.db
+
+# Terraform
+infra/.terraform/
+*.tfstate*
+
+# Misc
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+demo/
+tests/

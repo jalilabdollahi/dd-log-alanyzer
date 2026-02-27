@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# dd-log-analyzer — Watcher (continuous monitoring)
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+COPY src/ ./src/
+
+RUN pip install --no-cache-dir --prefix=/install "."
+
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.source="https://github.com/dd-log/dd-loganalyzer"
+LABEL org.opencontainers.image.description="dd-log-analyzer watcher — continuous Datadog log monitoring"
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy source and config
+COPY src/ ./src/
+COPY config/ ./config/
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+
+# Environment defaults
+ENV DB_PATH=/app/data/anomaly_history.db
+ENV CONFIG_PATH=/app/config/default.yaml
+ENV PYTHONUNBUFFERED=1
+
+# Watcher flags — override via env vars in docker-compose or Helm values
+ENV WATCH_INTERVAL=60
+ENV WATCH_ALL_SERVICES=true
+ENV WATCH_SLACK=false
+ENV WATCH_JIRA=false
+
+CMD dd-logs watch \
+    $([ "$WATCH_ALL_SERVICES" = "true" ] && echo "--all-services") \
+    --interval $WATCH_INTERVAL \
+    $([ "$WATCH_SLACK" = "true" ] && echo "--notify-slack" || echo "--no-slack") \
+    $([ "$WATCH_JIRA" = "true" ] && echo "--create-jira" || echo "--no-jira")
