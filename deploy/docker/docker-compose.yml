@@ -14,7 +14,7 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.backend
-    image: ghcr.io/dd-log/dd-log-analyzer-backend:latest
+    image: ghcr.io/jalilabdollahi/dd-log-analyzer-backend:latest
     container_name: dd-logs-backend
     restart: unless-stopped
     env_file: .env
@@ -39,7 +39,7 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.frontend
-    image: ghcr.io/dd-log/dd-log-analyzer-frontend:latest
+    image: ghcr.io/jalilabdollahi/dd-log-analyzer-frontend:latest
     container_name: dd-logs-frontend
     restart: unless-stopped
     ports:
@@ -53,7 +53,7 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.watcher
-    image: ghcr.io/dd-log/dd-log-analyzer-watcher:latest
+    image: ghcr.io/jalilabdollahi/dd-log-analyzer-watcher:latest
     container_name: dd-logs-watcher
     restart: unless-stopped
     env_file: .env

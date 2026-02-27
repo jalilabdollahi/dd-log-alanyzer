@@ -9,7 +9,7 @@ fullnameOverride: ""
 # ── Images ────────────────────────────────────────────────────────────────
 backend:
   image:
-    repository: ghcr.io/dd-log/dd-log-analyzer-backend
+    repository: ghcr.io/jalilabdollahi/dd-log-analyzer-backend
     tag: "latest"
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -24,7 +24,7 @@ backend:
 
 frontend:
   image:
-    repository: ghcr.io/dd-log/dd-log-analyzer-frontend
+    repository: ghcr.io/jalilabdollahi/dd-log-analyzer-frontend
     tag: "latest"
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -39,7 +39,7 @@ frontend:
 
 watcher:
   image:
-    repository: ghcr.io/dd-log/dd-log-analyzer-watcher
+    repository: ghcr.io/jalilabdollahi/dd-log-analyzer-watcher
     tag: "latest"
     pullPolicy: IfNotPresent
   replicaCount: 1
